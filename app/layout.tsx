@@ -66,7 +66,8 @@ export default function RootLayout({
       lang="en"
       className={`${interTight.variable} ${jetBrainsMono.variable}`}
     >
-      <body className="font-body">{children}</body>
+      {/* font-medium (500) matches the mobile app's Inter Tight body weight */}
+      <body className="font-body font-medium">{children}</body>
     </html>
   );
 }
