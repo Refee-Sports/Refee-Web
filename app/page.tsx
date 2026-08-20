@@ -35,9 +35,9 @@ function Hero() {
           </span>
 
           <h1 className="mt-6 font-display text-5xl font-black leading-[0.95] tracking-tighter text-ink sm:text-6xl lg:text-7xl">
-            Every game
+            Games don&apos;t count
             <br />
-            deserves an
+            unless you make it
             <br />
             <span className="text-signal">official.</span>
           </h1>
