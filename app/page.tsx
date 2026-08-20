@@ -141,7 +141,7 @@ const STATS = [
   { num: "< 5 min", label: "Avg. time to fill a game" },
   { num: "100%", label: "Officials background-checked" },
   { num: "48 hr", label: "Typical payout after a game" },
-  { num: "20+", label: "Sports supported" },
+  { num: "Hoops", label: "Basketball first — more soon" },
 ];
 
 function StatsStrip() {
