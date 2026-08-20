@@ -34,12 +34,12 @@ function Hero() {
             On-demand · Vetted · Background-checked
           </span>
 
-          <h1 className="mt-6 font-display text-5xl font-black leading-[0.95] tracking-tighter text-ink sm:text-6xl lg:text-7xl">
-            Games don&apos;t count
-            <br />
-            unless you make it
-            <br />
-            <span className="text-signal">official.</span>
+          <h1 className="mt-6 font-display font-black leading-[0.95] tracking-tighter text-ink text-[clamp(1.5rem,6.8vw,2.75rem)] lg:text-[clamp(2.5rem,4.2vw,3.5rem)]">
+            <span className="block whitespace-nowrap">
+              Games don&apos;t count unless
+            </span>
+            <span className="block whitespace-nowrap">you make it</span>
+            <span className="block whitespace-nowrap text-signal">official.</span>
           </h1>
 
           <p className="mt-6 max-w-md text-lg leading-relaxed text-ink-80">
