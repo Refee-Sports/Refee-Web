@@ -197,3 +197,158 @@ export function SelectField({
     </div>
   );
 }
+
+/** Section divider heading used across the director create/edit forms. */
+export function SectionLabel({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2
+      className={`mb-4 border-b border-ink-20 pb-2 font-mono-bold text-[9px] uppercase text-ink ${className}`}
+      style={{ letterSpacing: 2.5 }}
+    >
+      ── {children}
+    </h2>
+  );
+}
+
+/** Native date input, styled to match the app's calendar picker output. */
+export function DateField({
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  min?: string;
+  max?: string;
+}) {
+  return (
+    <input
+      type="date"
+      value={value}
+      min={min}
+      max={max}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full border-[1.5px] border-ink bg-chalk px-4 py-3.5 font-mono text-ink outline-none focus-visible:shadow-[3px_3px_0_var(--signal)]"
+      style={{ fontSize: 14 }}
+    />
+  );
+}
+
+/** Wrapping chip row — rulesets, crew size, levels. */
+export function ChipRow({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap gap-1.5">{children}</div>;
+}
+
+export function Chip({
+  label,
+  selected,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={`border-[1.5px] px-4 py-3 hover:opacity-80 disabled:opacity-40 ${
+        selected ? "border-signal bg-signal/10" : "border-ink-20 bg-chalk"
+      }`}
+    >
+      <span
+        className={`font-mono text-[11px] ${
+          selected ? "font-mono-bold text-signal" : "text-ink"
+        }`}
+        style={{ letterSpacing: 1 }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/** The big numeric picker used for 4 QUARTERS / 2 HALVES and crew size. */
+export function BigChoice({
+  num,
+  label,
+  selected,
+  onClick,
+}: {
+  num: string;
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex flex-1 flex-col items-center border-[1.5px] py-4 hover:opacity-80 ${
+        selected ? "border-signal bg-signal/10" : "border-ink bg-chalk"
+      }`}
+    >
+      <span
+        className={`font-display ${selected ? "text-signal" : "text-ink"}`}
+        style={{ fontSize: 28, letterSpacing: -1 }}
+      >
+        {num}
+      </span>
+      <span
+        className={`font-mono-bold text-[9px] uppercase ${
+          selected ? "text-signal/70" : "text-ink-40"
+        }`}
+        style={{ letterSpacing: 2 }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/** The app's Switch, as an accessible toggle button. */
+export function Toggle({
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 border border-ink disabled:opacity-60 ${
+        checked ? "bg-ink" : "bg-ink/15"
+      }`}
+    >
+      <span
+        className="absolute top-[2px] h-[18px] w-[18px]"
+        style={{
+          left: checked ? 22 : 2,
+          backgroundColor: checked ? "#C9F031" : "#E5E1D6",
+        }}
+      />
+    </button>
+  );
+}

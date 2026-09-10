@@ -10,6 +10,11 @@ import { useEffect } from "react";
  * component) and the tab becoming visible again, so we fire on both. Screens
  * rely on this to re-fetch — e.g. the jobs feed dropping a job you just
  * accepted.
+ *
+ * Like React Navigation's version, `effect` must be memoized (useCallback):
+ * it is a dependency, so a fresh function every render would re-run forever.
+ * Changing its identity deliberately (new inputs) re-runs the effect, which is
+ * how the feed reloads when you switch between home and near-me.
  */
 export function useFocusEffect(effect: () => void | (() => void)) {
   useEffect(() => {

@@ -1,25 +1,73 @@
 # Refee Web
 
-The marketing + download landing page for **Refee** — the on-demand marketplace
-for sports officials. The React Native app lives in [`../Refee-App`](../Refee-App).
+The web app for **Refee** — the on-demand marketplace for sports officials —
+plus the marketing landing page.
 
-This is where people learn about Refee and get prompted to download the app.
-Login is stubbed at `/login` and ready to wire up to Supabase Auth later.
+Refee is a mobile-first product, but web launches first: it ships without the
+App Store review cycle. So this is not a cut-down companion site. It runs the
+**same product as the mobile app, against the same backend**: a referee or
+tournament director can sign in here or in the app with one account and do the
+same things either way.
+
+The React Native app lives in
+[`Refee-Sports/Refee-Mobile`](https://github.com/Refee-Sports/Refee-Mobile).
+
+## Shared backend (the important part)
+
+Both clients talk to **one Supabase project** — same Postgres, same Auth, same
+RLS policies, same Storage bucket, same edge functions. Nothing is duplicated
+server-side, and there is no web-only API.
+
+Point the web env at the same project the app uses:
+
+| Mobile (`refee-mobile/refee/.env.dev`) | Web (`.env.local`)               |
+| -------------------------------------- | -------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`             | `NEXT_PUBLIC_SUPABASE_URL`       |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY`        | `NEXT_PUBLIC_SUPABASE_ANON_KEY`  |
+| `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`   | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
+
+Because phone-OTP sign-in resolves to the same `auth.users` row, a ref who
+signs up on the web opens the app and their profile, jobs, crew threads and
+earnings are already there.
+
+Two things to configure once in the Supabase dashboard:
+
+- **Authentication → URL Configuration** — add this origin's
+  `https://<your-domain>/auth/callback` alongside the app's `refee://` deep
+  link, so Google/Apple sign-in can redirect back.
+- **Authentication → Phone** — the same SMS provider serves both clients.
 
 ## Stack
 
-- **Next.js 15** (App Router) + **React 19** — same React skills as the RN app
-- **Tailwind CSS 3** — tokens mirror `Refee-App/Refee/refee/tailwind.config.js`
-- **next/font** — Inter Tight (display) + JetBrains Mono (telemetry), self-hosted
+- **Next.js 15** (App Router) + **React 19** — the signed-in app is client-side,
+  like the RN app, so the query layer is shared rather than reimplemented
+- **Tailwind CSS 3** — tokens mirror `refee-mobile/refee/tailwind.config.js`
+- **@supabase/supabase-js** — same client library, same queries
+- **@stripe/stripe-js** — Elements stands in for the app's native PaymentSheet
+- **next/font** — Inter Tight (display) + JetBrains Mono (telemetry)
 
-The design tokens (paper / ink / signal / hi-vis, zebra rules, hard shadows)
-are carried over from the app's design pack so web and mobile feel like one brand.
+## What's here
+
+Everything a user can do in the app:
+
+| Area | Screens |
+| --- | --- |
+| **Auth** | Welcome, phone OTP sign-in, verify, Google/Apple OAuth callback |
+| **Onboarding** | Role select, referee setup (6 steps), director setup (3 steps) |
+| **Referee** | Home (today/upcoming, earnings), jobs feed (tabs, filters, near-me), job detail (accept / decline / re-confirm / withdraw / message crew), profile (headshot, scorecard, earnings, availability, payouts), edit profile |
+| **Director** | Tournaments, tournament create/edit/detail, game create/edit/copy, game detail (applicants, crew messages + read receipts, complete, cancel, pay crew, rate refs), privacy-limited referee view, profile with auto-pay |
+| **Messaging** | Inbox / Messages, realtime chat threads, crew threads, read receipts |
+
+Routing mirrors the app's groups: `/auth/*`, `/onboarding/*`, `/app/*`
+(referee), `/director/*`. `components/providers/RouteGate.tsx` reproduces the
+app's `AuthGate` rules — no session → welcome, no profile → onboarding, then
+referee vs director by `primary_role`.
 
 ## Getting started
 
 ```bash
-cd Refee-Web
 npm install
+cp .env.example .env.local   # fill in from the same Supabase project as the app
 npm run dev
 ```
 
@@ -27,41 +75,74 @@ Open http://localhost:3000.
 
 ## Scripts
 
-| Command         | What it does                        |
-| --------------- | ----------------------------------- |
-| `npm run dev`   | Start the dev server (hot reload)   |
-| `npm run build` | Production build                    |
-| `npm run start` | Serve the production build          |
-| `npm run lint`  | Lint with `next lint`               |
+| Command         | What it does                      |
+| --------------- | --------------------------------- |
+| `npm run dev`   | Start the dev server (hot reload) |
+| `npm run build` | Production build                  |
+| `npm run start` | Serve the production build        |
+| `npm run typecheck` | `tsc --noEmit`                |
 
 ## Structure
 
 ```
 Refee-Web/
 ├── app/
-│   ├── layout.tsx        # Fonts, metadata, <html>
-│   ├── page.tsx          # The landing page (all sections)
-│   ├── globals.css       # Design tokens + component classes
-│   ├── login/page.tsx    # Placeholder auth screen (future Supabase Auth)
-│   └── favicon.svg
+│   ├── page.tsx              # Marketing landing page
+│   ├── layout.tsx            # Fonts + AuthProvider + RouteGate
+│   ├── globals.css           # Design tokens, app shell, form styles
+│   ├── auth/                 # welcome, sign-in, verify, callback
+│   ├── onboarding/           # role-select, referee, director
+│   ├── app/                  # Referee app (home, jobs, job/[id], inbox, profile…)
+│   └── director/             # Director app (tournaments, game/[id], referee/[id]…)
 ├── components/
-│   ├── SiteNav.tsx
-│   ├── Footer.tsx
-│   ├── PhoneMock.tsx     # CSS-only in-app job feed preview
-│   ├── StoreButtons.tsx  # App Store / Google Play buttons
-│   └── Wordmark.tsx
-├── tailwind.config.ts    # Tokens mirrored from the RN app
-└── ...
+│   ├── providers/            # AuthProvider, RouteGate
+│   ├── layout/               # TabBar, ScreenHeader, Telemetry, SetupNotice
+│   ├── ui/                   # AppButton, Badge, Field, Icon, ZebraRule
+│   ├── job/                  # JobCard + job-detail sections
+│   ├── messages/             # ConversationList, ChatThread
+│   ├── payments/             # StripePaymentModal
+│   └── ratings/              # RateRefereeModal
+├── hooks/                    # useJobsFeed, useJobAssignment, useFocusEffect
+└── lib/                      # Ported from the app — see below
 ```
 
-## TODO before launch
+## How the port works
 
-- [ ] Swap App Store / Google Play URLs in `components/StoreButtons.tsx`
-- [ ] Add a real QR code + OG share image
-- [ ] Wire `/login` to Supabase Auth (email OTP / Apple sign-in)
-- [ ] Point `metadataBase` / canonical URL at the real domain
+`lib/` is carried over from `refee-mobile/refee/lib/` with the query logic
+**unchanged**, so both clients hit the backend identically and RLS behaves the
+same. Only the platform edges differ:
+
+| Concern | Mobile | Web |
+| --- | --- | --- |
+| Session storage | AsyncStorage | `localStorage` |
+| OAuth return | `refee://` deep link | `/auth/callback` + PKCE |
+| Headshot picker | expo-image-picker | `<input type="file">` |
+| Location | expo-location | `navigator.geolocation` |
+| Directions | Apple/Google Maps deep link | Google Maps in a new tab |
+| Payments | Stripe PaymentSheet | Stripe Elements (same client secrets) |
+| Push | Expo push token registered | send-only (the app owns device tokens) |
+| Screen focus | `useFocusEffect` | mount + tab-visibility shim |
+
+The design system is the same brutalist sport-tech language: Inter Tight Black
+display, JetBrains Mono telemetry, ink/paper/signal/chalk/hi-vis, hard borders
+instead of shadows. Signed-in screens keep the app's phone-width column at every
+breakpoint, centred on desktop, so the two surfaces read as one product.
+
+## Known gaps
+
+These mirror open items in the app itself (see the mobile repo's
+`docs/PROJECT_STATUS.md`), not web-specific shortfalls:
+
+- Web push notifications aren't wired up. The web app *sends* push (so a
+  director acting here still reaches a ref's phone) but doesn't register the
+  browser for them.
+- Payments run in Stripe test mode and need live-mode hardening.
+- Feed radius filtering still depends on venue geocoding.
+- ESLint isn't configured in this project; `npm run typecheck` and
+  `npm run build` are the checks that run today.
 
 ## Deploy
 
-Optimized for **Vercel** (zero-config for Next.js). `npm run build` also produces
-a standard Next server you can host anywhere Node runs.
+Optimized for **Vercel** (zero-config for Next.js). Set the `NEXT_PUBLIC_*`
+variables above as project env vars. `npm run build` also produces a standard
+Next server you can host anywhere Node runs.

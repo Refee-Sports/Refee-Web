@@ -18,9 +18,12 @@ export type IconName =
   | "chevron-down"
   | "chevron-left"
   | "chevron-right"
+  | "circle"
   | "copy"
+  | "credit-card"
   | "dollar-sign"
   | "edit-2"
+  | "file-text"
   | "filter"
   | "grid"
   | "home"
@@ -32,7 +35,8 @@ export type IconName =
   | "send"
   | "star"
   | "user"
-  | "x";
+  | "x"
+  | "zap";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   "alert-circle": (
@@ -85,10 +89,17 @@ const PATHS: Record<IconName, React.ReactNode> = {
   "chevron-down": <polyline points="6 9 12 15 18 9" />,
   "chevron-left": <polyline points="15 18 9 12 15 6" />,
   "chevron-right": <polyline points="9 18 15 12 9 6" />,
+  circle: <circle cx="12" cy="12" r="10" />,
   copy: (
     <>
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </>
+  ),
+  "credit-card": (
+    <>
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+      <line x1="1" y1="10" x2="23" y2="10" />
     </>
   ),
   "dollar-sign": (
@@ -98,6 +109,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   "edit-2": <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />,
+  "file-text": (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </>
+  ),
   filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
   grid: (
     <>
@@ -153,6 +172,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <line x1="6" y1="6" x2="18" y2="18" />
     </>
   ),
+  zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
 };
 
 type Props = {
