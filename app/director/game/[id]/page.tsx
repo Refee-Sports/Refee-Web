@@ -339,9 +339,9 @@ export default function DirectorGameDetailPage({
   const showPayCrew = isClosed && !isPaid && accepted.length > 0;
 
   return (
-    <div className="flex flex-1 flex-col bg-paper pb-10">
+    <div className="app-canvas bg-paper pb-10">
       {/* Back / edit */}
-      <div className="flex items-center gap-3 px-5 py-3">
+      <div className="flex items-center gap-3 px-5 py-3 sm:px-0 lg:pt-5">
         <button
           type="button"
           onClick={() => router.back()}
@@ -424,6 +424,10 @@ export default function DirectorGameDetailPage({
           </p>
         </div>
       )}
+
+      {/* Operations on the left, crew on the right once there is room. */}
+      <div className="split-grid">
+        <div className="min-w-0">
 
       {/* Post-game rating prompt */}
       {isCompleted && unratedCount > 0 && (
@@ -652,6 +656,10 @@ export default function DirectorGameDetailPage({
         </div>
       )}
 
+        </div>
+
+        <div className="min-w-0">
+
       {/* Applicants */}
       <ApplicantSection
         title={`PENDING · ${pending.length}`}
@@ -704,6 +712,9 @@ export default function DirectorGameDetailPage({
           ))}
         </ApplicantSection>
       )}
+
+        </div>
+      </div>
 
       {ratingTarget && (
         <RateRefereeModal

@@ -100,10 +100,10 @@ export default function RefereeHomePage() {
   const firstName = profile?.first_name.toUpperCase() ?? "REF";
 
   return (
-    <div className="flex-1 bg-paper pb-6">
+    <div className="app-canvas bg-paper pb-6">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 py-3">
-        <Wordmark className="text-[26px]" />
+      <div className="flex items-center justify-between px-5 py-3 sm:px-0 lg:pt-6">
+        <Wordmark className="text-[26px] lg:hidden" />
         <span className="flex items-center gap-1.5">
           <span
             className={`h-1.5 w-1.5 rounded-full ${profile?.is_available ? "bg-court" : "bg-ink-20"}`}
@@ -121,7 +121,7 @@ export default function RefereeHomePage() {
       <ZebraRule noMargin />
 
       {/* Greeting */}
-      <div className="border-b border-ink-20 px-5 pb-4 pt-5">
+      <div className="border-b border-ink-20 px-5 pb-4 pt-5 sm:px-0">
         <p
           className="mb-1 font-mono-bold text-[10px] uppercase text-signal"
           style={{ letterSpacing: 2 }}
@@ -129,57 +129,64 @@ export default function RefereeHomePage() {
           {getGreeting()}
         </p>
         <h1
-          className="font-display text-ink"
-          style={{ fontSize: 36, lineHeight: "34px", letterSpacing: -1.5 }}
+          className="font-display text-[36px] leading-none text-ink lg:text-[52px]"
+          style={{ letterSpacing: -1.5 }}
         >
           {firstName}.
         </h1>
       </div>
 
-      {/* Today */}
-      <SectionHeader>Today</SectionHeader>
-      <div className="mx-5 flex flex-col gap-3">
-        {todayGames.length === 0 ? (
-          <EmptyState message={"No games on the schedule today.\nCheck the jobs feed."} />
-        ) : (
-          todayGames.map((r) => <AssignmentCard key={r.id} row={r} />)
-        )}
-      </div>
-
-      {/* Upcoming */}
-      {upcomingGames.length > 0 && (
-        <>
-          <SectionHeader>Upcoming</SectionHeader>
-          <div className="mx-5 flex flex-col gap-3">
-            {upcomingGames.slice(0, 3).map((r) => (
-              <AssignmentCard key={r.id} row={r} />
-            ))}
+      {/* Schedule on the left, money and shortcuts alongside it on desktop. */}
+      <div className="split-grid lg:mt-2">
+        <div className="min-w-0">
+          {/* Today */}
+          <SectionHeader>Today</SectionHeader>
+          <div className="mx-5 flex flex-col gap-3 sm:mx-0">
+            {todayGames.length === 0 ? (
+              <EmptyState message={"No games on the schedule today.\nCheck the jobs feed."} />
+            ) : (
+              todayGames.map((r) => <AssignmentCard key={r.id} row={r} />)
+            )}
           </div>
-        </>
-      )}
 
-      {/* Earnings */}
-      <SectionHeader>{`Earnings · ${monthName}`}</SectionHeader>
-      <div className="mx-5 border border-ink-20 bg-chalk">
-        <div className="flex border-b border-ink-20">
-          <EarningsCell label="Paid" value={earnings.paidThisMonth} bordered />
-          <EarningsCell label="Pending" value={earnings.pendingTotal} />
+          {/* Upcoming */}
+          {upcomingGames.length > 0 && (
+            <>
+              <SectionHeader>Upcoming</SectionHeader>
+              <div className="mx-5 flex flex-col gap-3 sm:mx-0">
+                {upcomingGames.slice(0, 3).map((r) => (
+                  <AssignmentCard key={r.id} row={r} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
-        <div className="px-4 py-3">
-          <span
-            className="font-mono text-[9px] uppercase text-ink-40"
-            style={{ letterSpacing: 1.5 }}
-          >
-            {earnings.gamesThisMonth} GAME{earnings.gamesThisMonth !== 1 ? "S" : ""} THIS MONTH
-          </span>
-        </div>
-      </div>
 
-      {/* Quick actions */}
-      <SectionHeader>Quick actions</SectionHeader>
-      <div className="mx-5 mb-4 flex flex-col gap-2">
-        <QuickAction label="Browse open jobs" href="/app/jobs" />
-        <QuickAction label="View my profile" href="/app/profile" />
+        <div className="min-w-0">
+          {/* Earnings */}
+          <SectionHeader>{`Earnings · ${monthName}`}</SectionHeader>
+          <div className="mx-5 border border-ink-20 bg-chalk sm:mx-0">
+            <div className="flex border-b border-ink-20">
+              <EarningsCell label="Paid" value={earnings.paidThisMonth} bordered />
+              <EarningsCell label="Pending" value={earnings.pendingTotal} />
+            </div>
+            <div className="px-4 py-3">
+              <span
+                className="font-mono text-[9px] uppercase text-ink-40"
+                style={{ letterSpacing: 1.5 }}
+              >
+                {earnings.gamesThisMonth} GAME{earnings.gamesThisMonth !== 1 ? "S" : ""} THIS MONTH
+              </span>
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <SectionHeader>Quick actions</SectionHeader>
+          <div className="mx-5 mb-4 flex flex-col gap-2 sm:mx-0">
+            <QuickAction label="Browse open jobs" href="/app/jobs" />
+            <QuickAction label="View my profile" href="/app/profile" />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -312,7 +319,7 @@ function EmptyState({ message }: { message: string }) {
 function SectionHeader({ children }: { children: string }) {
   return (
     <h2
-      className="mx-5 mb-3 mt-6 font-mono-bold text-[9px] uppercase text-ink-60"
+      className="mx-5 mb-3 mt-6 font-mono-bold text-[9px] uppercase text-ink-60 sm:mx-0"
       style={{ letterSpacing: 2 }}
     >
       {children}

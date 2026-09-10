@@ -94,9 +94,9 @@ export default function TournamentDetailPage({
         : "open";
 
   return (
-    <div className="flex flex-1 flex-col bg-paper pb-6">
+    <div className="app-canvas bg-paper pb-6">
       {/* Back / edit */}
-      <div className="flex items-center gap-3 px-5 py-3">
+      <div className="flex items-center gap-3 px-5 py-3 sm:px-0 lg:pt-5">
         <button
           type="button"
           onClick={() => router.push("/director/tournaments")}
@@ -123,7 +123,7 @@ export default function TournamentDetailPage({
       </div>
 
       {/* Hero */}
-      <div className="px-5 pb-1.5">
+      <div className="px-5 sm:px-0 pb-1.5">
         <h1
           className="font-display uppercase text-ink"
           style={{ fontSize: 30, lineHeight: "28px", letterSpacing: -1 }}
@@ -144,7 +144,7 @@ export default function TournamentDetailPage({
       </div>
 
       {/* Stats */}
-      <div className="mx-5 mb-4 flex border border-ink bg-chalk">
+      <div className="mx-5 sm:mx-0 mb-4 flex border border-ink bg-chalk">
         <StatCell label="Games" value={String(games.length)} />
         <span className="w-px bg-ink" />
         <StatCell label="Staffed" value={`${staffedGames}/${games.length}`} />
@@ -172,7 +172,7 @@ export default function TournamentDetailPage({
       </div>
 
       {games.length === 0 ? (
-        <div className="mx-5 flex items-center justify-center border border-dashed border-ink-20 px-5 py-8">
+        <div className="mx-5 sm:mx-0 flex items-center justify-center border border-dashed border-ink-20 px-5 py-8">
           <p
             className="whitespace-pre-line text-center font-mono text-[11px] uppercase text-ink-40"
             style={{ letterSpacing: 1 }}
@@ -183,7 +183,7 @@ export default function TournamentDetailPage({
       ) : (
         <div>
           {games.map((item) => (
-            <div key={item.id} className="mx-5 mb-2 border border-ink bg-chalk">
+            <div key={item.id} className="mx-5 sm:mx-0 mb-2 border border-ink bg-chalk">
               <Link href={`/director/game/${item.id}`} className="block hover:opacity-75">
                 <div className="px-4 pb-3 pt-3.5">
                   <div className="mb-1 flex items-start justify-between">

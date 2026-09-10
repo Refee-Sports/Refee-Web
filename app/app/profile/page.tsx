@@ -246,10 +246,16 @@ export default function RefereeProfilePage() {
   const nextNum = () => String(++sectionNum).padStart(2, "0");
 
   return (
-    <div className="flex-1 bg-paper pb-6">
+    <div className="app-canvas bg-paper pb-6">
       {/* App header */}
-      <div className="flex items-center justify-between px-5 pb-3 pt-1">
-        <Wordmark className="text-[26px]" />
+      <div className="flex items-center justify-between px-5 pb-3 pt-1 sm:px-0 lg:pt-6">
+        <Wordmark className="text-[26px] lg:hidden" />
+        <h1
+          className="hidden font-display uppercase text-ink lg:block"
+          style={{ fontSize: 34, lineHeight: "34px", letterSpacing: -1.2 }}
+        >
+          PROFILE<span className="text-signal">.</span>
+        </h1>
         <Link
           href="/app/edit-profile"
           aria-label="Edit profile"
@@ -260,7 +266,7 @@ export default function RefereeProfilePage() {
       </div>
 
       {/* Telemetry */}
-      <div className="px-5 pb-1.5">
+      <div className="px-5 sm:px-0 pb-1.5">
         <span className="font-mono text-[9px] uppercase text-ink-60" style={{ letterSpacing: 2 }}>
           <span className="font-mono-bold text-ink">PROFILE</span>
           {` · ID ${profile.ref_id_number}`}
@@ -272,7 +278,7 @@ export default function RefereeProfilePage() {
 
       {notice ? (
         <p
-          className="mx-5 mb-4 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
+          className="mx-5 sm:mx-0 mb-4 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
           style={{ letterSpacing: 1 }}
         >
           {notice}
@@ -413,7 +419,7 @@ export default function RefereeProfilePage() {
       </div>
 
       {/* Stat strip */}
-      <div className="mx-5 mb-4 flex border border-ink bg-chalk">
+      <div className="mx-5 sm:mx-0 mb-4 flex border border-ink bg-chalk">
         <StatStrip
           label="Games worked"
           value={String(earnings.gamesWorked || profile.games_called_total)}
@@ -443,9 +449,13 @@ export default function RefereeProfilePage() {
         <StatStrip label="Member since" value={String(memberYear)} />
       </div>
 
+      {/* Detail sections — stacked on phones, two columns once there is room. */}
+      <div className="split-grid">
+        <div className="min-w-0">
+
       {/* Pending earnings */}
       {earnings.pendingTotal > 0 && (
-        <div className="mx-5 -mt-3 mb-4 flex items-center justify-between border border-t-0 border-ink bg-hi-vis px-4 py-2.5">
+        <div className="mx-5 sm:mx-0 -mt-3 mb-4 flex items-center justify-between border border-t-0 border-ink bg-hi-vis px-4 py-2.5">
           <span
             className="font-mono-bold text-[9px] uppercase text-ink"
             style={{ letterSpacing: 1.5 }}
@@ -462,7 +472,7 @@ export default function RefereeProfilePage() {
       {upcomingGames.length > 0 && (
         <>
           <PSectionHeader num={nextNum()} title="Upcoming Games" />
-          <div className="mx-5 mb-2 flex flex-col gap-1.5">
+          <div className="mx-5 sm:mx-0 mb-2 flex flex-col gap-1.5">
             {upcomingGames.map((g) => (
               <UpcomingGameCard key={g.assignmentId} game={g} />
             ))}
@@ -472,7 +482,7 @@ export default function RefereeProfilePage() {
 
       {/* Payouts */}
       {payoutStatus?.payoutsEnabled ? (
-        <div className="mx-5 mb-4 flex items-center gap-2 border border-court bg-court/10 px-4 py-3 text-court">
+        <div className="mx-5 sm:mx-0 mb-4 flex items-center gap-2 border border-court bg-court/10 px-4 py-3 text-court">
           <Icon name="check-circle" size={13} />
           <span className="font-mono-bold text-[10px] uppercase" style={{ letterSpacing: 1.5 }}>
             Payouts ready · pay lands automatically
@@ -483,7 +493,7 @@ export default function RefereeProfilePage() {
           type="button"
           onClick={handleSetUpPayouts}
           disabled={payoutBusy}
-          className="mx-5 mb-4 flex w-[calc(100%-40px)] items-center justify-between border border-ink bg-ink px-4 py-3.5 text-left hover:opacity-80 disabled:opacity-60"
+          className="mx-5 sm:mx-0 mb-4 flex w-[calc(100%-40px)] items-center justify-between border border-ink bg-ink px-4 py-3.5 text-left hover:opacity-80 disabled:opacity-60"
         >
           <span className="flex-1 pr-3">
             <span
@@ -509,7 +519,7 @@ export default function RefereeProfilePage() {
 
       {/* Availability */}
       <div
-        className="mx-5 mb-4 flex items-center justify-between border border-ink px-4 py-3.5"
+        className="mx-5 sm:mx-0 mb-4 flex items-center justify-between border border-ink px-4 py-3.5"
         style={{ backgroundColor: profile.is_available ? "#C9F031" : "#F5F2EA" }}
       >
         <div>
@@ -553,7 +563,7 @@ export default function RefereeProfilePage() {
 
       {/* Days grid */}
       {avail && availDays > 0 && (
-        <div className="mx-5 mb-4 border border-ink-20 bg-chalk px-4 py-3">
+        <div className="mx-5 sm:mx-0 mb-4 border border-ink-20 bg-chalk px-4 py-3">
           <span
             className="mb-2 block font-mono-bold text-[9px] uppercase text-ink-60"
             style={{ letterSpacing: 2 }}
@@ -582,6 +592,10 @@ export default function RefereeProfilePage() {
         </div>
       )}
 
+        </div>
+
+        <div className="min-w-0">
+
       {/* Credentials */}
       {certs.length > 0 && (
         <>
@@ -591,7 +605,7 @@ export default function RefereeProfilePage() {
             action="[ MANAGE ]"
             actionHref="/app/edit-profile"
           />
-          <div className="mx-5 flex flex-wrap gap-1.5">
+          <div className="mx-5 sm:mx-0 flex flex-wrap gap-1.5">
             {certs.map((c) => (
               <span
                 key={c.id}
@@ -615,7 +629,7 @@ export default function RefereeProfilePage() {
       {sports.length > 0 && (
         <>
           <PSectionHeader num={nextNum()} title="Sports" />
-          <div className="mx-5 flex flex-col gap-1.5">
+          <div className="mx-5 sm:mx-0 flex flex-col gap-1.5">
             {sports.map((s) => (
               <div
                 key={s.sport_id}
@@ -645,7 +659,7 @@ export default function RefereeProfilePage() {
       {levels.length > 0 && (
         <>
           <PSectionHeader num={nextNum()} title="Levels" />
-          <div className="mx-5 flex flex-col gap-3">
+          <div className="mx-5 sm:mx-0 flex flex-col gap-3">
             {tierOrder.map((tier) => {
               const tierLevels = levelsByTier[tier];
               if (!tierLevels?.length) return null;
@@ -674,7 +688,7 @@ export default function RefereeProfilePage() {
       )}
 
       {/* Sign out */}
-      <div className="mx-5 mt-10">
+      <div className="mx-5 sm:mx-0 mt-10">
         <button
           type="button"
           onClick={signOut}
@@ -684,6 +698,8 @@ export default function RefereeProfilePage() {
             Sign out
           </span>
         </button>
+      </div>
+        </div>
       </div>
     </div>
   );
@@ -841,7 +857,7 @@ function PSectionHeader({
   actionHref?: string;
 }) {
   return (
-    <div className="mx-5 mb-2.5 mt-5 flex items-baseline justify-between">
+    <div className="mx-5 sm:mx-0 mb-2.5 mt-5 flex items-baseline justify-between">
       <span className="flex items-baseline gap-2">
         <span className="font-mono text-[8px] text-ink-40" style={{ letterSpacing: 1.5 }}>
           {num}

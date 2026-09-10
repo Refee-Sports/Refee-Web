@@ -86,7 +86,7 @@ export function RouteGate({ children }: { children: React.ReactNode }) {
 
 export function BootSplash() {
   return (
-    <div className="app-shell flex items-center justify-center">
+    <div className="form-shell flex items-center justify-center">
       <span
         className="font-display text-3xl tracking-tight text-ink"
         style={{ letterSpacing: -1 }}

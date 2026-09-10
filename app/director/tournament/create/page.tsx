@@ -161,7 +161,7 @@ function CreateTournamentInner() {
   );
 
   return (
-    <div className="flex flex-1 flex-col bg-paper">
+    <div className="app-canvas app-canvas--form bg-paper">
       <ScreenHeader
         title={isEdit ? "Edit tournament" : "New tournament"}
         backHref="/director/tournaments"

@@ -261,7 +261,7 @@ function CreateGameInner() {
   );
 
   return (
-    <div className="flex flex-1 flex-col bg-paper">
+    <div className="app-canvas app-canvas--form bg-paper">
       <div className="flex items-center justify-between border-b border-ink-20 px-5 py-3">
         <button
           type="button"

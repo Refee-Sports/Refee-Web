@@ -2,35 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon, type IconName } from "@/components/ui/Icon";
-
-type Item = { href: string; icon: IconName; label: string };
-
-const REFEREE_TABS: Item[] = [
-  { href: "/app/home", icon: "home", label: "Home" },
-  { href: "/app/jobs", icon: "calendar", label: "Jobs" },
-  { href: "/app/inbox", icon: "message-square", label: "Inbox" },
-  { href: "/app/profile", icon: "user", label: "Profile" },
-];
-
-const DIRECTOR_TABS: Item[] = [
-  { href: "/director/tournaments", icon: "grid", label: "Tournaments" },
-  { href: "/director/messages", icon: "message-square", label: "Messages" },
-  { href: "/director/profile", icon: "user", label: "Profile" },
-];
+import { Icon } from "@/components/ui/Icon";
+import { NAV_ITEMS, type NavRole } from "@/components/layout/nav-items";
 
 /**
  * Bottom tab bar — same items, icons, and colours as the app's tab navigators
  * (refee-mobile/refee/app/(app)/(tabs)/_layout.tsx and the director one).
- * Sticks to the bottom of the phone-width column.
+ * Sticks to the bottom of the phone-width column; from `lg` up the desktop
+ * SideNav takes over and this is hidden.
  */
-export function TabBar({ role }: { role: "referee" | "director" }) {
+export function TabBar({ role }: { role: NavRole }) {
   const pathname = usePathname();
-  const items = role === "director" ? DIRECTOR_TABS : REFEREE_TABS;
+  const items = NAV_ITEMS[role];
 
   return (
     <nav
-      className="sticky bottom-0 z-20 flex border-t border-ink bg-paper pt-2"
+      className="sticky bottom-0 z-20 flex border-t border-ink bg-paper pt-2 lg:hidden"
       style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
     >
       {items.map((item) => {

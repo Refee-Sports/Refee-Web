@@ -87,8 +87,8 @@ export default function RefereePublicProfilePage({
   const tierOrder = ["AMATEUR", "COLLEGE", "PRO"];
 
   return (
-    <div className="flex-1 bg-paper pb-10">
-      <div className="flex items-center gap-3 px-5 py-3">
+    <div className="app-canvas bg-paper pb-10">
+      <div className="flex items-center gap-3 px-5 py-3 sm:px-0 lg:pt-5">
         <button
           type="button"
           onClick={() => router.back()}
@@ -106,7 +106,7 @@ export default function RefereePublicProfilePage({
       </div>
 
       {/* Privacy notice */}
-      <div className="mx-5 mb-3 flex gap-2 border border-signal/30 bg-signal/5 px-3.5 py-2.5">
+      <div className="mx-5 sm:mx-0 mb-3 flex gap-2 border border-signal/30 bg-signal/5 px-3.5 py-2.5">
         <span className="font-mono text-base text-signal">▸</span>
         <p
           className="flex-1 font-mono text-[9px] text-signal/80"
@@ -161,7 +161,7 @@ export default function RefereePublicProfilePage({
       </div>
 
       {/* Rating — refs with under 5 ratings show as NEW REF, no number */}
-      <div className="mx-5 mb-4 flex border border-ink bg-chalk">
+      <div className="mx-5 sm:mx-0 mb-4 flex border border-ink bg-chalk">
         {ref.rating_count < 5 ? (
           <StatCell
             label="Rating"
@@ -183,11 +183,15 @@ export default function RefereePublicProfilePage({
         />
       </div>
 
+      {/* Credentials and levels sit side by side on desktop. */}
+      <div className="split-grid">
+        <div className="min-w-0">
+
       {/* Credentials */}
       {ref.certifications.length > 0 && (
         <>
           <SectionHead num="01" title="Credentials" />
-          <div className="mx-5 mb-4 flex flex-wrap gap-1.5">
+          <div className="mx-5 sm:mx-0 mb-4 flex flex-wrap gap-1.5">
             {ref.certifications.map((c, i) => (
               <span
                 key={i}
@@ -207,6 +211,10 @@ export default function RefereePublicProfilePage({
         </>
       )}
 
+        </div>
+
+        <div className="min-w-0">
+
       {/* Levels */}
       {ref.levels.length > 0 && (
         <>
@@ -214,7 +222,7 @@ export default function RefereePublicProfilePage({
             num={ref.certifications.length > 0 ? "02" : "01"}
             title="Levels Worked"
           />
-          <div className="mx-5 flex flex-col gap-3">
+          <div className="mx-5 sm:mx-0 flex flex-col gap-3">
             {tierOrder.map((tier) => {
               const tierLevels = levelsByTier[tier];
               if (!tierLevels?.length) return null;
@@ -242,8 +250,11 @@ export default function RefereePublicProfilePage({
         </>
       )}
 
+        </div>
+      </div>
+
       {ref.certifications.length === 0 && ref.levels.length === 0 && (
-        <div className="mx-5 flex items-center justify-center border border-dashed border-ink-20 px-4 py-6">
+        <div className="mx-5 sm:mx-0 flex items-center justify-center border border-dashed border-ink-20 px-4 py-6">
           <p
             className="text-center font-mono text-[11px] uppercase text-ink-40"
             style={{ letterSpacing: 1 }}
@@ -283,7 +294,7 @@ function StatCell({ label, value, sub }: { label: string; value: string; sub: st
 
 function SectionHead({ num, title }: { num: string; title: string }) {
   return (
-    <div className="mx-5 mb-2.5 mt-5 flex items-baseline gap-2">
+    <div className="mx-5 sm:mx-0 mb-2.5 mt-5 flex items-baseline gap-2">
       <span className="font-mono text-[8px] text-ink-40" style={{ letterSpacing: 1.5 }}>
         {num}
       </span>

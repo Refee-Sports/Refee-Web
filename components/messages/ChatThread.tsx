@@ -94,9 +94,9 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-paper">
+    <div className="app-canvas app-canvas--form flex min-h-0 flex-1 flex-col bg-paper lg:pb-0">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-ink-20 px-5 py-3">
+      <div className="flex items-center gap-3 border-b border-ink-20 px-5 py-3 sm:px-0 lg:pt-5">
         <button
           type="button"
           onClick={() => router.back()}

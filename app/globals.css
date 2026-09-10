@@ -30,6 +30,10 @@
   --ink-40: rgba(8, 17, 28, 0.36);
   --ink-20: rgba(8, 17, 28, 0.18);
   --ink-10: rgba(8, 17, 28, 0.08);
+
+  /* Desktop layout metrics (see .app-shell) */
+  --side-nav-w: 244px;
+  --canvas-w: 1560px;
 }
 
 @layer base {
@@ -252,7 +256,15 @@
 }
 
 @layer components {
-  /* The phone-width column every signed-in screen lives in. */
+  /* ------------------------------------------------------------------
+     App shell.
+
+     Below `lg` this is the phone-width column the app was built around,
+     with the bottom tab bar. From `lg` up the same screens spread into a
+     full-width desktop layout: a persistent side nav in column one, the
+     screen canvas in column two. Same information either way — only the
+     arrangement changes.
+     ------------------------------------------------------------------ */
   .app-shell {
     width: 100%;
     max-width: 480px;
@@ -263,10 +275,116 @@
     position: relative;
     z-index: 2;
   }
-  @media (min-width: 520px) {
+  /* Tablets and up use the whole width rather than a column in a grey field. */
+  @media (min-width: 640px) {
     .app-shell {
+      max-width: none;
+      margin: 0;
+    }
+  }
+  @media (min-width: 1024px) {
+    .app-shell {
+      max-width: none;
+      margin: 0;
+      display: grid;
+      grid-template-columns: var(--side-nav-w) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  /* Signed-out shell — auth, onboarding, boot splash. No side nav, so instead
+     of spreading wide the column stays a comfortable reading width and centres
+     itself in the viewport. */
+  .form-shell {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--paper);
+    position: relative;
+    z-index: 2;
+  }
+  @media (min-width: 520px) {
+    .form-shell {
       border-left: 1px solid var(--ink-20);
       border-right: 1px solid var(--ink-20);
+    }
+  }
+  @media (min-width: 1024px) {
+    .form-shell {
+      max-width: 560px;
+      border: 1px solid var(--ink-20);
+      min-height: auto;
+      margin: clamp(24px, 5vh, 64px) auto;
+      box-shadow: 6px 6px 0 var(--ink-10);
+    }
+  }
+
+  /* Column two: holds the screen and, on mobile, the bottom tab bar. */
+  .app-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-width: 0;
+  }
+
+  /* Centres a screen's content once the viewport is wider than the design.
+     Full-bleed rules and headers still span the whole canvas. */
+  .app-canvas {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+  }
+  @media (min-width: 640px) {
+    .app-canvas {
+      width: 100%;
+      max-width: var(--canvas-w);
+      margin: 0 auto;
+      padding: 0 clamp(20px, 3vw, 48px) 40px;
+    }
+
+    /* Reading-width cap for prose/forms that shouldn't stretch. */
+    .app-canvas--form {
+      max-width: 620px;
+    }
+    .app-canvas--wide {
+      max-width: 1600px;
+    }
+  }
+
+  /* Responsive card grid — one column on phones, more as room allows. */
+  .card-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 640px) {
+    .card-grid {
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1280px) {
+    .card-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* Two-column split used by home / profile / detail screens on desktop. */
+  .split-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (min-width: 1024px) {
+    .split-grid {
+      gap: 28px;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
     }
   }
 

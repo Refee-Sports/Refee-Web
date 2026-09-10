@@ -121,7 +121,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   if (!job) {
     return (
-      <div className="flex-1 bg-paper px-5 pt-4">
+      <div className="app-canvas bg-paper px-5 pt-4">
         <button
           type="button"
           onClick={() => router.back()}
@@ -144,9 +144,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-paper">
+    <div className="app-canvas bg-paper">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-1">
+      <div className="flex items-center justify-between px-5 py-1 sm:px-0 lg:pt-5">
         <button
           type="button"
           onClick={() => router.back()}
@@ -173,18 +173,29 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       </div>
 
       <JobDetailTelemetry job={job} />
-      <div className="px-5">
+      <div className="px-5 sm:px-0">
         <ZebraRule variant="signal" thin noMargin />
       </div>
 
-      <div className="flex-1 px-5 pb-6 pt-3">
-        <JobDetailHero job={job} />
-        <JobDetailScheduleCard job={job} />
-        <JobDetailMapCard job={job} />
-        <JobDetailCrew job={job} assignmentStatus={assignmentStatus} crewMembers={crewMembers} />
-        <JobDetailGames job={job} />
-        <JobDetailSpecs job={job} />
-        {job.hirerNote ? <JobDetailHirerNote note={job.hirerNote} /> : null}
+      <div className="flex-1 px-5 pb-6 pt-3 sm:px-0">
+        {/* The game itself on the left; crew and specs alongside on desktop. */}
+        <div className="split-grid">
+          <div className="min-w-0">
+            <JobDetailHero job={job} />
+            <JobDetailScheduleCard job={job} />
+            <JobDetailMapCard job={job} />
+          </div>
+          <div className="min-w-0">
+            <JobDetailCrew
+              job={job}
+              assignmentStatus={assignmentStatus}
+              crewMembers={crewMembers}
+            />
+            <JobDetailGames job={job} />
+            <JobDetailSpecs job={job} />
+            {job.hirerNote ? <JobDetailHirerNote note={job.hirerNote} /> : null}
+          </div>
+        </div>
 
         {actionError ? (
           <p

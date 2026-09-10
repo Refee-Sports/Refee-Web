@@ -90,9 +90,15 @@ export default function DirectorProfilePage() {
     : "TD";
 
   return (
-    <div className="flex-1 bg-paper pb-6">
-      <div className="flex items-center justify-between px-5 pb-3 pt-1">
-        <Wordmark className="text-[26px]" />
+    <div className="app-canvas bg-paper pb-6">
+      <div className="flex items-center justify-between px-5 pb-3 pt-1 sm:px-0 lg:pt-6">
+        <Wordmark className="text-[26px] lg:hidden" />
+        <h1
+          className="hidden font-display uppercase text-ink lg:block"
+          style={{ fontSize: 34, lineHeight: "34px", letterSpacing: -1.2 }}
+        >
+          PROFILE<span className="text-signal">.</span>
+        </h1>
       </div>
 
       {/* Telemetry */}
@@ -114,7 +120,7 @@ export default function DirectorProfilePage() {
 
       {notice ? (
         <p
-          className="mx-5 mb-4 border border-signal bg-signal/10 px-3 py-2 font-mono text-[10px] uppercase text-ink-80"
+          className="mx-5 sm:mx-0 mb-4 border border-signal bg-signal/10 px-3 py-2 font-mono text-[10px] uppercase text-ink-80"
           style={{ letterSpacing: 1 }}
         >
           {notice}
@@ -142,7 +148,7 @@ export default function DirectorProfilePage() {
       </div>
 
       {/* Org hero */}
-      <div className="mx-5 mb-4 border-b border-t border-ink py-5">
+      <div className="mx-5 sm:mx-0 mb-4 border-b border-t border-ink py-5">
         <h1
           className="font-display uppercase text-ink"
           style={{ fontSize: 34, lineHeight: "32px", letterSpacing: -1.5 }}
@@ -162,8 +168,12 @@ export default function DirectorProfilePage() {
         )}
       </div>
 
+      {/* Detail sections — stacked on phones, side by side once there is room. */}
+      <div className="split-grid">
+        <div className="min-w-0">
+
       {/* Info rows */}
-      <div className="mx-5 mb-4 border border-ink bg-chalk">
+      <div className="mx-5 sm:mx-0 mb-4 border border-ink bg-chalk">
         <InfoRow label="Contact" value={contactName} />
         <span className="block h-px bg-ink-20" />
         <InfoRow
@@ -178,6 +188,10 @@ export default function DirectorProfilePage() {
           value={hirer.is_verified ? "VERIFIED ✓" : "PENDING VERIFICATION"}
         />
       </div>
+
+        </div>
+
+        <div className="min-w-0">
 
       {/* Payment method */}
       <button
@@ -214,7 +228,7 @@ export default function DirectorProfilePage() {
       </button>
 
       {/* Sign out */}
-      <div className="mx-5 mt-6">
+      <div className="mx-5 sm:mx-0 mt-6">
         <button
           type="button"
           onClick={signOut}
@@ -225,6 +239,8 @@ export default function DirectorProfilePage() {
             Sign out
           </span>
         </button>
+      </div>
+        </div>
       </div>
 
       {setupSecret && (

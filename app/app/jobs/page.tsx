@@ -66,8 +66,8 @@ export default function JobsFeedPage() {
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col bg-paper">
-      <div className="flex items-end justify-between px-5 pb-2 pt-3">
+    <div className="app-canvas bg-paper">
+      <div className="flex items-end justify-between px-5 pb-2 pt-3 sm:px-0 lg:pt-6">
         <div>
           <p
             className="mb-1 font-mono text-[9px] uppercase text-ink-60"
@@ -75,9 +75,10 @@ export default function JobsFeedPage() {
           >
             {headerDate}
           </p>
+          {/* 26px on phones, larger once there is room for it */}
           <h1
-            className="font-display uppercase text-ink"
-            style={{ fontSize: 26, lineHeight: "26px", letterSpacing: -1 }}
+            className="font-display text-[26px] uppercase leading-none text-ink lg:text-[34px]"
+            style={{ letterSpacing: -1 }}
           >
             JOBS<span className="text-signal">/</span>FEED
           </h1>
@@ -102,7 +103,7 @@ export default function JobsFeedPage() {
         </button>
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-y border-ink px-5 py-2">
+      <div className="flex items-center justify-between gap-2 border-y border-ink px-5 py-2 sm:px-0">
         <span
           className="flex-1 font-mono-bold text-[9px] uppercase text-ink"
           style={{ letterSpacing: 1.4 }}
@@ -134,7 +135,7 @@ export default function JobsFeedPage() {
 
       <ZebraRule variant="signal" thin noMargin />
 
-      <div className="flex-1 px-5 pb-6">
+      <div className="flex-1 px-5 pb-6 sm:px-0">
         {locationNote ? (
           <p
             className="mt-3 border border-whistle bg-whistle/10 px-3 py-2 font-mono text-[10px] uppercase text-ink-80"
@@ -168,7 +169,7 @@ export default function JobsFeedPage() {
         ) : null}
 
         {/* Tabs */}
-        <div className="mb-3 mt-3 flex border border-ink">
+        <div className="mb-3 mt-3 flex border border-ink lg:max-w-lg">
           {(
             [
               ["available", "Available", counts.available],
@@ -251,7 +252,7 @@ export default function JobsFeedPage() {
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-2.5">
+        <div className="card-grid">
           {visible.length === 0 && !loading ? (
             <p className="px-1 py-6 font-mono text-xs uppercase text-ink-60">
               {tabRows.length === 0
