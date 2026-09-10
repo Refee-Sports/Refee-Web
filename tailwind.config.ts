@@ -58,11 +58,16 @@ const config: Config = {
           20: "rgba(8, 17, 28, 0.18)",
           10: "rgba(8, 17, 28, 0.08)",
         },
-      },
-      fontFamily: {
-        display: ["var(--font-inter-tight)", "sans-serif"],
-        body: ["var(--font-inter-tight)", "system-ui", "sans-serif"],
-        mono: ["var(--font-jetbrains-mono)", "monospace"],
+
+        // Ink on dark surfaces (mirrors the app's dark palette)
+        "ink-inv": {
+          DEFAULT: "#FFFFFF",
+          80: "rgba(255, 255, 255, 0.78)",
+          60: "rgba(255, 255, 255, 0.56)",
+          40: "rgba(255, 255, 255, 0.36)",
+          20: "rgba(255, 255, 255, 0.18)",
+          10: "rgba(255, 255, 255, 0.08)",
+        },
       },
       letterSpacing: {
         tightest: "-0.04em",
