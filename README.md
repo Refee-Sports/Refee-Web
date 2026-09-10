@@ -40,15 +40,21 @@ in any hosted project, so the web app has to point at that same local stack:
 ```bash
 # 1. start the local backend from the mobile repo
 cd ../Refee-Mobile/refee && supabase start
-supabase status            # copy "API URL" and the Publishable (anon) key
 
-# 2. point the web app at it
+# 2. point the web app at it (reads `supabase status`, writes .env.local)
 cd ../../Refee-Web
-cp .env.example .env.local  # paste the URL + key from step 1
+npm run setup:local
+#   …or pass the path if the repo lives elsewhere:
+#   npm run setup:local -- ../path/to/refee
 
 # 3. run
 npm run dev
 ```
+
+`setup:local` only ever writes the publishable/anon key — it refuses the
+service-role or `sb_secret_…` key, which would bypass RLS if it reached the
+browser. To do it by hand instead, `cp .env.example .env.local` and paste the
+API URL and Publishable key from `supabase status`.
 
 Then open http://localhost:3000/auth/sign-in, enter `(555) 555-0100`, and use
 `123456`. That is the same account the app signs into with the same number.
@@ -108,6 +114,7 @@ Open http://localhost:3000.
 | `npm run build` | Production build                  |
 | `npm run start` | Serve the production build        |
 | `npm run typecheck` | `tsc --noEmit`                |
+| `npm run setup:local` | Point `.env.local` at the app's local Supabase |
 
 ## Structure
 
