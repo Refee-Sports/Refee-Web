@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/providers/AuthProvider";
+import { RouteGate } from "@/components/providers/RouteGate";
 
 const interTight = Inter_Tight({
   subsets: ["latin"],
@@ -66,8 +68,12 @@ export default function RootLayout({
       lang="en"
       className={`${interTight.variable} ${jetBrainsMono.variable}`}
     >
-      {/* font-medium (500) matches the mobile app's Inter Tight body weight */}
-      <body className="font-body font-medium">{children}</body>
+      {/* font-body (500) matches the mobile app's Inter Tight body weight */}
+      <body className="font-body">
+        <AuthProvider>
+          <RouteGate>{children}</RouteGate>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

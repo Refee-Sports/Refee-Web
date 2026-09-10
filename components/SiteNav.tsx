@@ -34,16 +34,16 @@ export function SiteNav() {
         </ul>
 
         <div className="flex items-center gap-3">
-          {/* Login is a placeholder for the future auth flow */}
           <Link
-            href="/login"
+            href="/auth/welcome"
             className="kicker hidden transition-colors hover:text-ink sm:inline-flex"
           >
             Log in
           </Link>
-          <a href="#download" className="btn btn-hi">
-            Get the app
-          </a>
+          {/* Refee is mobile-first, but the full app runs on the web too */}
+          <Link href="/auth/welcome" className="btn btn-hi">
+            Open Refee
+          </Link>
         </div>
       </nav>
     </header>
