@@ -20,11 +20,14 @@ export type IconName =
   | "chevron-right"
   | "copy"
   | "dollar-sign"
+  | "edit-2"
+  | "filter"
   | "grid"
   | "home"
   | "log-out"
   | "map-pin"
   | "message-square"
+  | "navigation"
   | "plus"
   | "send"
   | "star"
@@ -94,6 +97,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </>
   ),
+  "edit-2": <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />,
+  filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
   grid: (
     <>
       <rect x="3" y="3" width="7" height="7" />
@@ -121,6 +126,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="12" cy="10" r="3" />
     </>
   ),
+  navigation: <polygon points="3 11 22 2 13 21 11 13 3 11" />,
   "message-square": <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
   plus: (
     <>
