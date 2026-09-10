@@ -1,11 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
 import { Spinner } from "@/components/ui/AppButton";
-import { signInWithAppleOAuth, signInWithGoogleOAuth } from "@/lib/oauth";
+import {
+  fetchOAuthProviderAvailability,
+  signInWithAppleOAuth,
+  signInWithGoogleOAuth,
+  type ProviderAvailability,
+} from "@/lib/oauth";
 import { getSupabaseConfig, isLocalSupabaseUrl } from "@/lib/supabase-config";
 import { getSupabaseSetupError, supabase } from "@/lib/supabase";
 import { isDevelopment } from "@/lib/env";
@@ -21,6 +26,21 @@ export default function SignInPage() {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<ProviderAvailability>({
+    google: null,
+    apple: null,
+  });
+
+  // Which social providers this project can actually complete a sign-in with.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchOAuthProviderAvailability().then((a) => {
+      if (!cancelled) setAvailability(a);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   const { url: supabaseUrl } = getSupabaseConfig();
@@ -114,6 +134,7 @@ export default function SignInPage() {
               loading={oauthLoading}
               onGoogle={() => runOAuth("google")}
               onApple={() => runOAuth("apple")}
+              availability={availability}
             />
             {oauthError ? (
               <p className="mt-3 font-mono text-xs uppercase text-foul">{oauthError}</p>
