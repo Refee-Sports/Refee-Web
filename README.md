@@ -30,7 +30,34 @@ Because phone-OTP sign-in resolves to the same `auth.users` row, a ref who
 signs up on the web opens the app and their profile, jobs, crew threads and
 earnings are already there.
 
-Two things to configure once in the Supabase dashboard:
+### Using the mobile test accounts locally
+
+The seeded test users — `(555) 555-0100` through `0105`, OTP always `123456` —
+live in the **local** Supabase stack (`refee/supabase/seed.sql`), and the OTP
+comes from `[auth.sms.test_otp]` in `refee/supabase/config.toml`. They are not
+in any hosted project, so the web app has to point at that same local stack:
+
+```bash
+# 1. start the local backend from the mobile repo
+cd ../Refee-Mobile/refee && supabase start
+supabase status            # copy "API URL" and the Publishable (anon) key
+
+# 2. point the web app at it
+cd ../../Refee-Web
+cp .env.example .env.local  # paste the URL + key from step 1
+
+# 3. run
+npm run dev
+```
+
+Then open http://localhost:3000/auth/sign-in, enter `(555) 555-0100`, and use
+`123456`. That is the same account the app signs into with the same number.
+
+In development the sign-in screen prints the API host it is talking to
+(`DEV · API 127.0.0.1:54321 · LOCAL`) so you can confirm both clients are
+pointed at the same backend.
+
+Two things to configure once in the Supabase dashboard (hosted only):
 
 - **Authentication → URL Configuration** — add this origin's
   `https://<your-domain>/auth/callback` alongside the app's `refee://` deep
