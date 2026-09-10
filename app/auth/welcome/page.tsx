@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
+import { ValueStrip } from "@/components/auth/ValueStrip";
 import { ZebraRule } from "@/components/ui/ZebraRule";
 import {
   fetchOAuthProviderAvailability,
@@ -100,10 +101,8 @@ export default function WelcomePage() {
           </p>
 
           {/* Three-cell value strip */}
-          <div className="mb-auto flex border border-paper/20 lg:mb-0 lg:max-w-lg">
-            <ValueCell value="48" accent="H" label="Payout" bordered />
-            <ValueCell value="0" accent="%" label="Ref fees" bordered />
-            <ValueCell value="YOU" accent="." label="Set rate" />
+          <div className="mb-auto lg:mb-0">
+            <ValueStrip size="hero" />
           </div>
         </div>
       </div>
@@ -198,40 +197,6 @@ export default function WelcomePage() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ValueCell({
-  value,
-  accent,
-  label,
-  bordered,
-}: {
-  value: string;
-  accent: string;
-  label: string;
-  bordered?: boolean;
-}) {
-  return (
-    <div
-      className={`flex flex-1 flex-col items-center py-3 lg:py-5 ${
-        bordered ? "border-r border-paper/20" : ""
-      }`}
-    >
-      <span
-        className="font-display text-[22px] leading-none text-paper lg:text-[30px]"
-        style={{ letterSpacing: -1 }}
-      >
-        {value}
-        <span className="text-hi-vis">{accent}</span>
-      </span>
-      <span
-        className="mt-1 font-mono-bold text-[8px] uppercase text-paper/50 lg:mt-2 lg:text-[9px]"
-        style={{ letterSpacing: 1.5 }}
-      >
-        {label}
-      </span>
     </div>
   );
 }

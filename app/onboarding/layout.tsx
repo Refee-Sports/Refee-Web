@@ -1,3 +1,6 @@
+import { AuthSplit } from "@/components/auth/AuthSplit";
+
+/** Onboarding runs in the same signed-out split as the auth screens. */
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
-  return <div className="form-shell flex flex-col">{children}</div>;
+  return <AuthSplit>{children}</AuthSplit>;
 }

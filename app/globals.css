@@ -292,6 +292,87 @@
     }
   }
 
+  /* ------------------------------------------------------------------
+     Signed-out split — auth and onboarding.
+
+     Below `lg`: the form alone, full width, exactly as designed for a phone.
+     From `lg`: brand panel + form filling the viewport. The form column keeps
+     a reading width, because a stretched text field helps nobody.
+     ------------------------------------------------------------------ */
+  .auth-split {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--paper);
+    position: relative;
+    z-index: 2;
+  }
+
+  .auth-split__aside {
+    display: none;
+  }
+
+  .auth-split__main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .auth-split__form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Past phone width the form stops stretching and centres. A full-bleed
+     768px text field is not a web layout, it's an accident. */
+  @media (min-width: 640px) {
+    /* Breathing room rather than vertical centring: centring a form taller
+       than the viewport (onboarding) would push its top out of reach. */
+    .auth-split__form {
+      padding: clamp(24px, 4vh, 56px) 0 clamp(32px, 5vh, 64px);
+    }
+
+    /* Centre the screen's own markup without asking it to change.
+       Two classes so this beats the page's own `min-h-screen` utility, which
+       would otherwise stretch the form and strand its submit button at the
+       bottom of the viewport. */
+    .auth-split .auth-split__form > * {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 0;
+    }
+  }
+
+  /* Wide enough for the brand panel to earn its place beside the form. */
+  @media (min-width: 1024px) {
+    .auth-split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(440px, 0.9fr);
+      align-items: stretch;
+    }
+
+    .auth-split__aside {
+      display: flex;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--ink);
+      border-right: 1px solid var(--ink);
+      overflow: hidden;
+    }
+
+    .auth-split__main {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+  }
+
   /* Signed-out shell — auth, onboarding, boot splash. No side nav, so instead
      of spreading wide the column stays a comfortable reading width and centres
      itself in the viewport. */
