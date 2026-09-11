@@ -11,7 +11,11 @@ import {
   signInWithGoogleOAuth,
   type ProviderAvailability,
 } from "@/lib/oauth";
-import { getSupabaseConfig, isLocalSupabaseUrl } from "@/lib/supabase-config";
+import {
+  canReceiveSmsLocally,
+  getSupabaseConfig,
+  isLocalSupabaseUrl,
+} from "@/lib/supabase-config";
 import { getSupabaseSetupError, supabase } from "@/lib/supabase";
 import { isDevelopment } from "@/lib/env";
 
@@ -87,6 +91,18 @@ export default function SignInPage() {
     }
 
     const e164 = "+1" + phone.replace(/\D/g, "");
+
+    // Local Supabase accepts any number and returns 200, but only actually
+    // delivers a code to its test numbers. Say so here rather than sending
+    // someone to the verify screen to wait for an SMS that never went out.
+    if (isLocalSupabaseUrl(supabaseUrl) && !canReceiveSmsLocally(e164)) {
+      setPhoneLoading(false);
+      setError(
+        "This is the local Supabase stack, which has no SMS provider — a real number can't receive a code here. Use (555) 555-0100 with code 123456, or point NEXT_PUBLIC_SUPABASE_URL at the hosted project to use your own number."
+      );
+      return;
+    }
+
     // Drop a stale JWT so the OTP attaches to the phone user, not a ghost account.
     await supabase.auth.signOut();
     const { error: otpError } = await supabase.auth.signInWithOtp({ phone: e164 });
