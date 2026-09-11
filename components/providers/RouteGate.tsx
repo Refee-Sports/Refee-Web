@@ -5,9 +5,10 @@ import { useEffect } from "react";
 import { useAuth } from "./AuthProvider";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
-/** Referees (and assignors) land here; directors get their own app. */
+/** Each role has its own app; these are where they land. */
 export const REFEREE_HOME = "/app/jobs";
 export const DIRECTOR_HOME = "/director/tournaments";
+export const ASSIGNOR_HOME = "/assignor/tournaments";
 
 /** Routes that are fine to view signed-out (marketing + auth). */
 function isPublic(pathname: string): boolean {
@@ -26,7 +27,8 @@ function isPublic(pathname: string): boolean {
  *   no session          → /auth/welcome
  *   session, no profile → /onboarding/role-select
  *   director            → the director app
- *   referee / assignor  → the referee app
+ *   assignor            → the assignor app
+ *   referee             → the referee app
  */
 export function RouteGate({ children }: { children: React.ReactNode }) {
   const { session, profileComplete, primaryRole, ready } = useAuth();
@@ -41,10 +43,11 @@ export function RouteGate({ children }: { children: React.ReactNode }) {
     const inOnboardingGroup = pathname.startsWith("/onboarding");
     const inAppGroup = pathname.startsWith("/app");
     const inDirectorGroup = pathname.startsWith("/director");
+    const inAssignorGroup = pathname.startsWith("/assignor");
 
     if (!session) {
       // Marketing pages stay reachable signed-out; the app itself does not.
-      if (inOnboardingGroup || inAppGroup || inDirectorGroup) {
+      if (inOnboardingGroup || inAppGroup || inDirectorGroup || inAssignorGroup) {
         router.replace("/auth/welcome");
       }
       return;
@@ -60,11 +63,15 @@ export function RouteGate({ children }: { children: React.ReactNode }) {
     if (primaryRole === null) return;
 
     if (primaryRole === "director") {
-      if (inAuthGroup || inOnboardingGroup || inAppGroup) {
+      if (inAuthGroup || inOnboardingGroup || inAppGroup || inAssignorGroup) {
         router.replace(DIRECTOR_HOME);
       }
+    } else if (primaryRole === "assignor") {
+      if (inAuthGroup || inOnboardingGroup || inAppGroup || inDirectorGroup) {
+        router.replace(ASSIGNOR_HOME);
+      }
     } else {
-      if (inAuthGroup || inOnboardingGroup || inDirectorGroup) {
+      if (inAuthGroup || inOnboardingGroup || inDirectorGroup || inAssignorGroup) {
         router.replace(REFEREE_HOME);
       }
     }
@@ -75,6 +82,7 @@ export function RouteGate({ children }: { children: React.ReactNode }) {
   const guarded =
     pathname.startsWith("/app") ||
     pathname.startsWith("/director") ||
+    pathname.startsWith("/assignor") ||
     pathname.startsWith("/onboarding");
 
   if (guarded && !ready && isSupabaseConfigured) {

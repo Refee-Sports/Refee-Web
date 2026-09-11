@@ -6,6 +6,12 @@ import { Wordmark } from "@/components/Wordmark";
 import { Icon } from "@/components/ui/Icon";
 import { NAV_ITEMS, type NavRole } from "@/components/layout/nav-items";
 
+const ROLE_LABELS: Record<NavRole, string> = {
+  referee: "Referee",
+  director: "Director",
+  assignor: "Assignor",
+};
+
 /**
  * Desktop side nav — the same destinations as the bottom TabBar, laid out for
  * a pointer and a wide viewport. Hidden below `lg`, where TabBar takes over.
@@ -24,7 +30,7 @@ export function SideNav({ role }: { role: NavRole }) {
           className="mt-1.5 font-mono-bold text-[9px] uppercase text-ink-40"
           style={{ letterSpacing: 2 }}
         >
-          {role === "director" ? "Director" : "Referee"}
+          {ROLE_LABELS[role]}
         </p>
       </div>
 

@@ -30,7 +30,7 @@ function fmtWhen(iso: string): string {
  * `basePath` is the route group the thread lives under — /app for referees,
  * /director for directors — mirroring the app's two conversation routes.
  */
-export function ConversationList({ basePath }: { basePath: "/app" | "/director" }) {
+export function ConversationList({ basePath }: { basePath: "/app" | "/director" | "/assignor" }) {
   const router = useRouter();
   const [conversations, setConversations] = useState<ConversationRow[]>([]);
   const [loading, setLoading] = useState(true);

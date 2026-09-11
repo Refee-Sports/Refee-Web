@@ -1,6 +1,6 @@
 import type { IconName } from "@/components/ui/Icon";
 
-export type NavRole = "referee" | "director";
+export type NavRole = "referee" | "director" | "assignor";
 export type NavItem = { href: string; icon: IconName; label: string };
 
 /**
@@ -19,5 +19,11 @@ export const NAV_ITEMS: Record<NavRole, NavItem[]> = {
     { href: "/director/tournaments", icon: "grid", label: "Tournaments" },
     { href: "/director/messages", icon: "message-square", label: "Messages" },
     { href: "/director/profile", icon: "user", label: "Profile" },
+  ],
+  assignor: [
+    { href: "/assignor/tournaments", icon: "grid", label: "Tournaments" },
+    { href: "/assignor/roster", icon: "users", label: "Roster" },
+    { href: "/assignor/messages", icon: "message-square", label: "Messages" },
+    { href: "/assignor/profile", icon: "user", label: "Profile" },
   ],
 };
