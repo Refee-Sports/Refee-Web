@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { geocodeAddress } from "@/lib/geo/geocode";
 import { sendPush } from "@/lib/push/notifications";
+import { isMissingRpc } from "@/lib/rpc-fallback";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -386,6 +387,69 @@ export async function setGameAutoAccept(
   return { error: null };
 }
 
+// ── Pre-0030 fallbacks ───────────────────────────────────────────────────────
+// Used only when the staffing RPCs are missing (see lib/rpc-fallback.ts): the
+// same direct writes the live mobile app makes, which a pre-0030 database's
+// policies allow. Delete once 0030 is applied everywhere.
+
+async function legacySetApplicantStatus(
+  jobId: string,
+  refId: string,
+  status: "accepted" | "declined"
+): Promise<{ message: string } | null> {
+  const { error } = await supabase
+    .from("job_assignments")
+    .update({ status, responded_at: new Date().toISOString() })
+    .eq("job_id", jobId)
+    .eq("ref_id", refId);
+  return error;
+}
+
+async function legacyCompleteGame(gameId: string, fullPay: number): Promise<{ message: string } | null> {
+  const { error: jobErr } = await supabase
+    .from("jobs")
+    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .eq("id", gameId);
+  if (jobErr) return jobErr;
+  const { error } = await supabase
+    .from("job_assignments")
+    .update({ status: "completed", amount_due: fullPay })
+    .eq("job_id", gameId)
+    .in("status", ["accepted", "needs_reconfirm"]);
+  return error;
+}
+
+async function legacyCancelGame(
+  gameId: string,
+  job: { starts_at: string; pay_per_game: number; num_games: number | null }
+): Promise<{ result: { fee_paid: boolean; fee_amount: number } | null; error: { message: string } | null }> {
+  // Same rule as cancel_game: half pay to each confirmed ref inside the window.
+  const lateCancel =
+    new Date(job.starts_at).getTime() - Date.now() < CANCEL_FEE_WINDOW_HOURS * 3_600_000;
+  const feeAmount = lateCancel ? Math.round(job.pay_per_game * (job.num_games ?? 1) * 0.5) : 0;
+
+  const { error: jobErr } = await supabase
+    .from("jobs")
+    .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+    .eq("id", gameId);
+  if (jobErr) return { result: null, error: jobErr };
+
+  const { error: confirmedErr } = await supabase
+    .from("job_assignments")
+    .update({ status: "cancelled", amount_due: feeAmount })
+    .eq("job_id", gameId)
+    .in("status", ["accepted", "needs_reconfirm"]);
+  if (confirmedErr) return { result: null, error: confirmedErr };
+
+  await supabase
+    .from("job_assignments")
+    .update({ status: "cancelled", amount_due: 0 })
+    .eq("job_id", gameId)
+    .eq("status", "pending");
+
+  return { result: { fee_paid: lateCancel, fee_amount: feeAmount }, error: null };
+}
+
 // ── Applicant management ─────────────────────────────────────────────────────
 
 export async function fetchGameApplicants(
@@ -550,11 +614,14 @@ export async function approveApplicant(
   // rows and reports no error, so the button looked like it worked and never
   // did. The security-definer RPC is the sanctioned path, and it also checks
   // crew size and schedule conflicts.
-  const { error } = await supabase.rpc("director_respond_to_application", {
+  const { error: rpcError } = await supabase.rpc("director_respond_to_application", {
     p_job_id: jobId,
     p_ref_id: refId,
     p_accept: true,
   });
+  const error = isMissingRpc(rpcError)
+    ? await legacySetApplicantStatus(jobId, refId, "accepted")
+    : rpcError;
   if (error) return { error: new Error(error.message) };
 
   // Flip the game to 'staffed' if this filled the crew
@@ -594,11 +661,14 @@ export async function declineApplicantForGame(
   refId: string
 ): Promise<{ error: Error | null }> {
   // Same reason as approveApplicant: direct updates are blocked by RLS.
-  const { error } = await supabase.rpc("director_respond_to_application", {
+  const { error: rpcError } = await supabase.rpc("director_respond_to_application", {
     p_job_id: jobId,
     p_ref_id: refId,
     p_accept: false,
   });
+  const error = isMissingRpc(rpcError)
+    ? await legacySetApplicantStatus(jobId, refId, "declined")
+    : rpcError;
   return { error: error ? new Error(error.message) : null };
 }
 
@@ -760,10 +830,17 @@ export async function updateGame(
 
   if (!materialChange) return { error: null, refsNeedReconfirm: false };
 
-  // The trg_jobs_reconfirm_assignments trigger flips accepted refs to
-  // needs_reconfirm when a job changes materially — this client-side update
-  // was a broken duplicate of it (no UPDATE policy, so it matched nothing).
-  // We only need to know who to notify, so read them back after the change.
+  // With migration 0030 the trg_jobs_reconfirm_assignments trigger has already
+  // flipped accepted refs to needs_reconfirm, and this update matches nothing
+  // (refs' rows have no UPDATE policy there). Without 0030 — the hosted
+  // database today — there is no trigger, so this update is what asks the
+  // crew to re-confirm. Either way, read back who to notify afterwards.
+  await supabase
+    .from("job_assignments")
+    .update({ status: "needs_reconfirm" })
+    .eq("job_id", gameId)
+    .eq("status", "accepted");
+
   const { data: flipped } = await supabase
     .from("job_assignments")
     .select("ref_id")
@@ -883,10 +960,10 @@ export async function completeGame(
   // complete_game closes the job AND settles its assignments (amount_due,
   // status) in one transaction. Doing it as two client updates left the
   // assignment half silently unwritten — job_assignments has no UPDATE policy.
-  const { error: updErr } = await supabase.rpc("complete_game", { p_job_id: gameId });
-  if (updErr) return { error: new Error(updErr.message) };
-
   const fullPay = job.pay_per_game * (job.num_games ?? 1);
+  const { error: rpcError } = await supabase.rpc("complete_game", { p_job_id: gameId });
+  const updErr = isMissingRpc(rpcError) ? await legacyCompleteGame(gameId, fullPay) : rpcError;
+  if (updErr) return { error: new Error(updErr.message) };
 
   await postCrewNote(
     gameId,
@@ -919,9 +996,16 @@ export async function cancelGame(
   // cancel_game cancels the job and settles every assignment (bust fee for
   // confirmed refs, nothing for pending ones) in one transaction. It owns the
   // fee maths too, so we report what it actually applied rather than guessing.
-  const { data: result, error: updErr } = await supabase.rpc("cancel_game", {
+  const { data: rpcResult, error: rpcError } = await supabase.rpc("cancel_game", {
     p_job_id: gameId,
   });
+  let result = rpcResult as { fee_paid?: boolean; fee_amount?: number } | null;
+  let updErr: { message: string } | null = rpcError;
+  if (isMissingRpc(rpcError)) {
+    const legacy = await legacyCancelGame(gameId, job);
+    result = legacy.result;
+    updErr = legacy.error;
+  }
   if (updErr) return { error: new Error(updErr.message), feePaid: false, feeAmount: 0 };
 
   const lateCancel = Boolean(result?.fee_paid);
