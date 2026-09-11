@@ -78,11 +78,13 @@ export function useJobAssignment(jobId: string | undefined) {
     setActionLoading(true);
     const result = await acceptJob(supabase, uid, jobId);
     if (!result.error) {
-      setStatus("accepted");
+      // Trust the server: a job needing organizer approval comes back
+      // "pending", not "accepted".
+      setStatus(result.status);
       await refresh();
     }
     setActionLoading(false);
-    return result;
+    return { error: result.error };
   }, [jobId, userId, error, refresh]);
 
   const decline = useCallback(async (): Promise<{ error: Error | null }> => {
@@ -98,11 +100,11 @@ export function useJobAssignment(jobId: string | undefined) {
     setActionLoading(true);
     const result = await declineJob(supabase, uid, jobId);
     if (!result.error) {
-      setStatus("declined");
+      setStatus(result.status);
       await refresh();
     }
     setActionLoading(false);
-    return result;
+    return { error: result.error };
   }, [jobId, userId, error, refresh]);
 
   const canMutate =

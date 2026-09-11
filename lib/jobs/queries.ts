@@ -70,46 +70,48 @@ export async function acceptJob(
   supabase: SupabaseClient,
   userId: string,
   jobId: string
-): Promise<{ error: Error | null }> {
+): Promise<{ status: AssignmentStatus; error: Error | null }> {
   const { conflictTitle, error: conflictErr } = await findScheduleConflict(supabase, userId, jobId);
-  if (conflictErr) return { error: conflictErr };
+  if (conflictErr) return { status: null, error: conflictErr };
   if (conflictTitle) {
     return {
+      status: null,
       error: new Error(
         `Schedule conflict: you're already booked on "${conflictTitle}" during this time.`
       ),
     };
   }
 
-  const respondedAt = new Date().toISOString();
-  const { error } = await supabase.from("job_assignments").upsert(
-    {
-      ref_id: userId,
-      job_id: jobId,
-      status: "accepted",
-      responded_at: respondedAt,
-    },
-    { onConflict: "job_id,ref_id" }
-  );
-  return { error: error ? new Error(error.message) : null };
+  // Writes go through respond_to_job, not the table. job_assignments has no
+  // INSERT/UPDATE policy for refs by design — the SECURITY DEFINER function is
+  // the only sanctioned path, and it decides whether the job auto-accepts or
+  // lands as "pending" for the organizer to approve. A direct upsert here is
+  // what RLS rejects with 42501.
+  const { data, error } = await supabase.rpc("respond_to_job", {
+    p_job_id: jobId,
+    p_accept: true,
+  });
+  return {
+    status: error ? null : ((data as AssignmentStatus) ?? null),
+    error: error ? new Error(error.message) : null,
+  };
 }
 
 export async function declineJob(
   supabase: SupabaseClient,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for call-site parity
   userId: string,
   jobId: string
-): Promise<{ error: Error | null }> {
-  const respondedAt = new Date().toISOString();
-  const { error } = await supabase.from("job_assignments").upsert(
-    {
-      ref_id: userId,
-      job_id: jobId,
-      status: "declined",
-      responded_at: respondedAt,
-    },
-    { onConflict: "job_id,ref_id" }
-  );
-  return { error: error ? new Error(error.message) : null };
+): Promise<{ status: AssignmentStatus; error: Error | null }> {
+  // Same reason as acceptJob: the table rejects direct writes from refs.
+  const { data, error } = await supabase.rpc("respond_to_job", {
+    p_job_id: jobId,
+    p_accept: false,
+  });
+  return {
+    status: error ? null : ((data as AssignmentStatus) ?? null),
+    error: error ? new Error(error.message) : null,
+  };
 }
 
 /** @deprecated Use declineJob */

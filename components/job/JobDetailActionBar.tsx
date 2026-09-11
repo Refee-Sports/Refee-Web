@@ -6,6 +6,9 @@ import type { AssignmentStatus } from "@/lib/jobs/queries";
 
 type Props = {
   assignmentStatus: AssignmentStatus;
+  /** Shown inside the bar — the buttons are pinned to the bottom of the
+   *  viewport, so an error rendered up in the page content is easy to miss. */
+  error?: string | null;
   actionLoading: boolean;
   canMutate: boolean;
   onDecline: () => void;
@@ -17,6 +20,7 @@ type Props = {
 /** Port of the app's JobDetailActionBar — one bar per assignment state. */
 export function JobDetailActionBar({
   assignmentStatus,
+  error,
   actionLoading,
   canMutate,
   onDecline,
@@ -33,6 +37,15 @@ export function JobDetailActionBar({
         <div className="-mt-[1.5px]">
           <ZebraRule variant="signal" thin noMargin />
         </div>
+        {error ? (
+          <p
+            className="mt-3 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
+            style={{ letterSpacing: 1 }}
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : null}
         <div className="mt-3 flex gap-2.5">
           <div className="flex flex-1 items-center justify-center border border-court bg-court/15 py-4">
             <span
@@ -83,6 +96,15 @@ export function JobDetailActionBar({
         <div className="-mt-[1.5px]">
           <ZebraRule variant="signal" thin noMargin />
         </div>
+        {error ? (
+          <p
+            className="mt-3 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
+            style={{ letterSpacing: 1 }}
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : null}
         <p
           className="mb-2.5 mt-3 text-center font-mono-bold text-[10px] uppercase text-foul"
           style={{ letterSpacing: 1.5 }}
@@ -128,6 +150,15 @@ export function JobDetailActionBar({
         <div className="-mt-[1.5px]">
           <ZebraRule variant="signal" thin noMargin />
         </div>
+        {error ? (
+          <p
+            className="mt-3 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
+            style={{ letterSpacing: 1 }}
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : null}
         <div className="mt-3 flex items-center justify-center border border-ink-20 py-4">
           <span
             className="font-mono-bold text-xs uppercase text-ink-60"
@@ -145,6 +176,15 @@ export function JobDetailActionBar({
       <div className="-mt-[1.5px]">
         <ZebraRule variant="signal" thin noMargin />
       </div>
+      {error ? (
+        <p
+          className="mt-3 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
+          style={{ letterSpacing: 1 }}
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
       <div className="mt-3 flex gap-2.5">
         <button
           type="button"
