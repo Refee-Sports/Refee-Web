@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useState } from "react";
 import { Wordmark } from "@/components/Wordmark";
 import { ZebraRule } from "@/components/ui/ZebraRule";
 import { Icon } from "@/components/ui/Icon";
@@ -9,11 +10,15 @@ import { Spinner } from "@/components/ui/AppButton";
 import { useFocusEffect } from "@/hooks/useFocusEffect";
 import { supabase } from "@/lib/supabase";
 import {
+  approveApplicant,
+  declineApplicantForGame,
   fetchGamesNeedingCompletion,
   fetchMyTournaments,
+  fetchPendingApprovals,
   fetchStandaloneGames,
   type DirectorGameRow,
   type NeedsCompletionRow,
+  type PendingApproval,
   type TournamentRow,
 } from "@/lib/director/queries";
 import { runAutoPay } from "@/lib/payments/queries";
@@ -25,25 +30,91 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "#E53E3E",
 };
 
+const TZ = "America/Chicago";
+
 function formatDate(iso: string) {
   return new Date(iso)
     .toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
-      timeZone: "America/Chicago",
+      timeZone: TZ,
     })
     .toUpperCase();
 }
 
-/** Port of refee-mobile/refee/app/(director)/(tabs)/tournaments.tsx. */
+function formatGameWhen(iso: string) {
+  const d = new Date(iso);
+  const day = d
+    .toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: TZ })
+    .toUpperCase();
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ });
+  return `${day} · ${time}`;
+}
+
+function appliedAgo(iso: string) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (mins < 60) return `${mins}M AGO`;
+  const hours = Math.round(mins / 60);
+  if (hours < 48) return `${hours}H AGO`;
+  return `${Math.round(hours / 24)}D AGO`;
+}
+
+type Tab = "tournaments" | "games" | "approvals";
+
+const TAB_META: { id: Tab; label: string; short: string }[] = [
+  { id: "tournaments", label: "Tournaments & leagues", short: "Tournaments" },
+  { id: "games", label: "Single games", short: "Games" },
+  { id: "approvals", label: "Approvals", short: "Approvals" },
+];
+
+function isTab(v: string | null): v is Tab {
+  return v === "tournaments" || v === "games" || v === "approvals";
+}
+
+/**
+ * Director home — port of refee-mobile/refee/app/(director)/(tabs)/tournaments.tsx,
+ * organised into three tabs: tournaments & leagues, single games, and the
+ * referees waiting on the director's approval.
+ *
+ * The tab lives in the URL (?tab=) so a reload, the back button, or a shared
+ * link lands on the same view. useSearchParams needs a Suspense boundary.
+ */
 export default function DirectorTournamentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center bg-paper text-signal">
+          <Spinner />
+        </div>
+      }
+    >
+      <DirectorHome />
+    </Suspense>
+  );
+}
+
+function DirectorHome() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   const [tournaments, setTournaments] = useState<TournamentRow[]>([]);
   const [singleGames, setSingleGames] = useState<DirectorGameRow[]>([]);
   const [needsCompletion, setNeedsCompletion] = useState<NeedsCompletionRow[]>([]);
+  const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoPayNote, setAutoPayNote] = useState<string | null>(null);
+  const [defaultTab, setDefaultTab] = useState<Tab | null>(null);
+  const [actioning, setActioning] = useState<string | null>(null);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+
+  const tab: Tab = isTab(tabParam) ? tabParam : (defaultTab ?? "tournaments");
+
+  const selectTab = (next: Tab) => {
+    router.replace(`/director/tournaments?tab=${next}`, { scroll: false });
+  };
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -72,17 +143,26 @@ export default function DirectorTournamentsPage() {
         });
       });
 
-      const [{ tournaments: rows, error: fetchErr }, nudge, { games: solo }] =
+      const [{ tournaments: rows, error: fetchErr }, nudge, { games: solo }, { approvals: pending }] =
         await Promise.all([
           fetchMyTournaments(session.user.id),
           fetchGamesNeedingCompletion(session.user.id),
           fetchStandaloneGames(session.user.id),
+          fetchPendingApprovals(session.user.id),
         ]);
 
       if (cancelled) return;
       setTournaments(rows);
       setNeedsCompletion(nudge);
       setSingleGames(solo);
+      setApprovals(pending);
+      // With no tab in the URL, open where the work is: approvals if refs are
+      // waiting, otherwise whichever list has something in it. Only decided
+      // once, so a reload of the data never yanks the view out from under you.
+      setDefaultTab(
+        (prev) =>
+          prev ?? (pending.length > 0 ? "approvals" : rows.length > 0 ? "tournaments" : "games")
+      );
       if (fetchErr) setError(fetchErr.message);
       setLoading(false);
     })();
@@ -92,6 +172,39 @@ export default function DirectorTournamentsPage() {
   }, []);
 
   useFocusEffect(load);
+
+  const respond = async (a: PendingApproval, accept: boolean) => {
+    setApprovalError(null);
+    setActioning(a.assignmentId);
+    const { error: err } = accept
+      ? await approveApplicant(a.job.id, a.refId)
+      : await declineApplicantForGame(a.job.id, a.refId);
+    if (err) {
+      setActioning(null);
+      setApprovalError(err.message);
+      return;
+    }
+    // Refresh quietly: slot counts and game statuses change with every answer,
+    // and a full reload would flash the whole screen back to a spinner.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      const [{ approvals: next }, { games }] = await Promise.all([
+        fetchPendingApprovals(session.user.id),
+        fetchStandaloneGames(session.user.id),
+      ]);
+      setApprovals(next);
+      setSingleGames(games);
+    }
+    setActioning(null);
+  };
+
+  const counts: Record<Tab, number> = {
+    tournaments: tournaments.length,
+    games: singleGames.length,
+    approvals: approvals.length,
+  };
 
   return (
     <div className="app-canvas bg-paper pb-6">
@@ -110,8 +223,13 @@ export default function DirectorTournamentsPage() {
       {/* Telemetry */}
       <div className="px-5 pb-1.5 sm:px-0">
         <span className="font-mono text-[9px] uppercase text-ink-60" style={{ letterSpacing: 2 }}>
-          <span className="font-mono-bold text-ink">TOURNAMENTS</span>
-          {` · ${tournaments.length} TOTAL`}
+          <span className="font-mono-bold text-ink">DIRECTOR</span>
+          {` · ${tournaments.length} TOURNAMENT${tournaments.length !== 1 ? "S" : ""} · ${
+            singleGames.length
+          } SINGLE GAME${singleGames.length !== 1 ? "S" : ""}`}
+          {approvals.length > 0 ? (
+            <span className="font-mono-bold text-ink">{` · ${approvals.length} AWAITING APPROVAL`}</span>
+          ) : null}
         </span>
       </div>
       <div className="mb-4 px-5 sm:px-0">
@@ -119,7 +237,7 @@ export default function DirectorTournamentsPage() {
       </div>
 
       {autoPayNote ? (
-        <div className="mx-5 mb-4 border border-court sm:mx-0 bg-court/10 px-4 py-3">
+        <div className="mx-5 mb-4 border border-court bg-court/10 px-4 py-3 sm:mx-0">
           <p
             className="font-mono-bold text-[10px] uppercase text-court"
             style={{ letterSpacing: 1.5 }}
@@ -174,13 +292,80 @@ export default function DirectorTournamentsPage() {
         </div>
       )}
 
+      {/* Tabs */}
+      <div className="mb-4 px-5 sm:px-0">
+        <div
+          role="tablist"
+          aria-label="Director views"
+          className="flex overflow-x-auto border border-ink lg:max-w-2xl"
+        >
+          {TAB_META.map(({ id, label, short }, idx) => {
+            const active = tab === id;
+            const count = counts[id];
+            const urgent = id === "approvals" && count > 0;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => selectTab(id)}
+                className={`flex flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-2 py-3 sm:gap-2 sm:px-3 ${
+                  idx < TAB_META.length - 1 ? "border-r border-ink" : ""
+                } ${active ? "bg-ink text-paper" : "bg-chalk text-ink-60 hover:text-ink"}`}
+              >
+                <span className="font-mono-bold text-[10px] uppercase" style={{ letterSpacing: 1.4 }}>
+                  <span className="sm:hidden">{short}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </span>
+                <span
+                  className={`min-w-[20px] px-1.5 py-0.5 text-center font-mono-bold text-[10px] ${
+                    urgent ? "bg-whistle text-ink" : active ? "text-hi-vis" : "text-ink"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Refs waiting shouldn't depend on the director thinking to check a tab. */}
+      {!loading && approvals.length > 0 && tab !== "approvals" ? (
+        <div className="mb-4 px-5 sm:px-0">
+          <button
+            type="button"
+            onClick={() => selectTab("approvals")}
+            className="flex w-full items-center justify-between border border-whistle bg-whistle/15 px-4 py-2.5 text-left hover:opacity-80"
+          >
+            <span className="flex items-center gap-2 text-ink">
+              <Icon name="alert-circle" size={13} />
+              <span
+                className="font-mono-bold text-[10px] uppercase"
+                style={{ letterSpacing: 1.5 }}
+              >
+                {approvals.length} referee{approvals.length !== 1 ? "s" : ""} waiting on your
+                approval
+              </span>
+            </span>
+            <span
+              className="font-mono-bold text-[10px] uppercase text-ink"
+              style={{ letterSpacing: 1.5 }}
+            >
+              Review →
+            </span>
+          </button>
+        </div>
+      ) : null}
+
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-signal">
+        <div className="flex flex-1 items-center justify-center py-12 text-signal">
           <Spinner />
         </div>
-      ) : (
-        <div className="px-5 sm:px-0">
-          {tournaments.length === 0 && singleGames.length === 0 ? (
+      ) : tab === "tournaments" ? (
+        <div className="px-5 sm:px-0" role="tabpanel">
+          {tournaments.length === 0 ? (
             <EmptyState />
           ) : (
             <div className="card-grid">
@@ -189,22 +374,27 @@ export default function DirectorTournamentsPage() {
               ))}
             </div>
           )}
-
-          {singleGames.length > 0 && (
-            <div className="mt-5">
-              <h2
-                className="mb-3 font-mono-bold text-[10px] uppercase text-ink"
-                style={{ letterSpacing: 2.5 }}
-              >
-                ── Single games ({singleGames.length})
-              </h2>
-              <div className="card-grid">
-                {singleGames.map((g) => (
-                  <SingleGameCard key={g.id} game={g} />
-                ))}
-              </div>
+        </div>
+      ) : tab === "games" ? (
+        <div className="px-5 sm:px-0" role="tabpanel">
+          {singleGames.length === 0 ? (
+            <SingleGamesEmpty />
+          ) : (
+            <div className="card-grid">
+              {singleGames.map((g) => (
+                <SingleGameCard key={g.id} game={g} />
+              ))}
             </div>
           )}
+        </div>
+      ) : (
+        <div role="tabpanel">
+          <ApprovalsPanel
+            approvals={approvals}
+            actioning={actioning}
+            error={approvalError}
+            onRespond={respond}
+          />
         </div>
       )}
 
@@ -216,6 +406,241 @@ export default function DirectorTournamentsPage() {
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+// ── Approvals ────────────────────────────────────────────────────────────────
+
+function ApprovalsPanel({
+  approvals,
+  actioning,
+  error,
+  onRespond,
+}: {
+  approvals: PendingApproval[];
+  actioning: string | null;
+  error: string | null;
+  onRespond: (a: PendingApproval, accept: boolean) => void;
+}) {
+  if (approvals.length === 0) {
+    return (
+      <div className="mx-5 flex flex-col items-center border border-dashed border-ink-20 px-6 py-12 text-center sm:mx-0">
+        <span className="mb-4 flex h-12 w-12 items-center justify-center border-2 border-ink-20 text-ink-20">
+          <Icon name="check-circle" size={22} />
+        </span>
+        <p className="font-display text-ink" style={{ fontSize: 22, letterSpacing: -0.5 }}>
+          ALL CAUGHT UP.
+        </p>
+        <p className="mt-2 max-w-sm font-mono text-[11px] text-ink-60" style={{ letterSpacing: 0.3 }}>
+          When a referee applies to one of your games, they show up here to approve or decline.
+        </p>
+      </div>
+    );
+  }
+
+  // One card per game, in the soonest-first order the query returns.
+  const groups = new Map<string, PendingApproval[]>();
+  for (const a of approvals) {
+    const list = groups.get(a.job.id) ?? [];
+    list.push(a);
+    groups.set(a.job.id, list);
+  }
+
+  return (
+    <div className="px-5 sm:px-0">
+      {error ? (
+        <p
+          role="alert"
+          className="mb-3 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
+          style={{ letterSpacing: 1 }}
+        >
+          {error}
+        </p>
+      ) : null}
+      <div className="card-grid">
+        {[...groups.values()].map((items) => (
+          <ApprovalGroup
+            key={items[0].job.id}
+            items={items}
+            actioning={actioning}
+            onRespond={onRespond}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ApprovalGroup({
+  items,
+  actioning,
+  onRespond,
+}: {
+  items: PendingApproval[];
+  actioning: string | null;
+  onRespond: (a: PendingApproval, accept: boolean) => void;
+}) {
+  const job = items[0].job;
+  const slotsLeft = Math.max(0, job.crewSize - job.acceptedCount);
+
+  return (
+    <section className="flex flex-col self-start border border-ink bg-chalk">
+      <div className="h-1 bg-whistle" />
+      <Link
+        href={`/director/game/${job.id}`}
+        className="block border-b border-ink-20 px-4 pb-3 pt-3 hover:opacity-80"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className="min-w-0 flex-1 truncate font-mono-bold text-[12px] uppercase text-ink"
+            style={{ letterSpacing: 0.5 }}
+          >
+            {job.title}
+          </span>
+          <span
+            className="shrink-0 font-mono-bold text-[9px] uppercase text-ink-60"
+            style={{ letterSpacing: 1.5 }}
+          >
+            {items.length} waiting
+          </span>
+        </div>
+        <span
+          className="mt-1 block font-mono text-[10px] uppercase text-ink-60"
+          style={{ letterSpacing: 1 }}
+        >
+          {formatGameWhen(job.startsAt)} · {job.venueCity.toUpperCase()}, {job.venueState} · $
+          {job.payPerGame}/REF
+        </span>
+        {job.tournamentName ? (
+          <span
+            className="mt-0.5 block font-mono text-[9px] uppercase text-ink-40"
+            style={{ letterSpacing: 1.2 }}
+          >
+            {job.tournamentName}
+          </span>
+        ) : null}
+        <span
+          className={`mt-2 inline-block font-mono-bold text-[9px] uppercase ${
+            slotsLeft === 0 ? "text-foul" : "text-court"
+          }`}
+          style={{ letterSpacing: 1.4 }}
+        >
+          {job.acceptedCount} / {job.crewSize} crew confirmed
+          {slotsLeft === 0 ? " · full" : ` · ${slotsLeft} open`}
+        </span>
+      </Link>
+
+      <div className="flex flex-col">
+        {items.map((a, idx) => (
+          <ApprovalRow
+            key={a.assignmentId}
+            approval={a}
+            first={idx === 0}
+            busy={actioning === a.assignmentId}
+            locked={actioning !== null}
+            crewFull={slotsLeft === 0}
+            onRespond={onRespond}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ApprovalRow({
+  approval,
+  first,
+  busy,
+  locked,
+  crewFull,
+  onRespond,
+}: {
+  approval: PendingApproval;
+  first: boolean;
+  busy: boolean;
+  locked: boolean;
+  crewFull: boolean;
+  onRespond: (a: PendingApproval, accept: boolean) => void;
+}) {
+  const p = approval.profile;
+  const initials = p ? `${p.first_name[0] ?? "?"}${p.last_initial}`.toUpperCase() : "??";
+  const name = p ? `${p.first_name} ${p.last_initial}.`.toUpperCase() : "UNKNOWN REF";
+
+  return (
+    <div className={first ? "" : "border-t border-ink-20"}>
+      <Link
+        href={`/director/referee/${approval.refId}`}
+        className="flex items-center gap-3 px-4 py-3 hover:opacity-80"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-ink">
+          <span className="font-mono-bold text-[11px] text-paper">{initials}</span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className="block truncate font-mono-bold text-[11px] uppercase text-ink"
+            style={{ letterSpacing: 0.5 }}
+          >
+            {name}
+          </span>
+          <span
+            className="block truncate font-mono text-[9px] uppercase text-ink-60"
+            style={{ letterSpacing: 1 }}
+          >
+            {p ? `${p.city.toUpperCase()}, ${p.state} · ★ ${p.rating.toFixed(2)} · ` : ""}
+            applied {appliedAgo(approval.appliedAt)}
+          </span>
+        </span>
+        <Icon name="chevron-right" size={13} />
+      </Link>
+      <div className="flex border-t border-ink-20">
+        <button
+          type="button"
+          onClick={() => onRespond(approval, false)}
+          disabled={locked}
+          className="flex-1 border-r border-ink-20 py-2.5 text-center hover:opacity-70 disabled:opacity-40"
+        >
+          <span
+            className="font-mono-bold text-[10px] uppercase text-foul"
+            style={{ letterSpacing: 1.5 }}
+          >
+            Decline
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onRespond(approval, true)}
+          disabled={locked || crewFull}
+          title={crewFull ? "Every crew slot is already filled" : undefined}
+          className="flex flex-1 items-center justify-center bg-court py-2.5 text-paper hover:opacity-80 disabled:bg-ink-20 disabled:text-ink-40"
+        >
+          {busy ? (
+            <Spinner />
+          ) : (
+            <span className="font-mono-bold text-[10px] uppercase" style={{ letterSpacing: 1.5 }}>
+              {crewFull ? "Crew full" : "Approve ✓"}
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SingleGamesEmpty() {
+  return (
+    <div className="flex flex-col items-center border border-dashed border-ink-20 px-6 py-12 text-center">
+      <p className="font-display text-ink" style={{ fontSize: 22, letterSpacing: -0.5 }}>
+        NO SINGLE GAMES YET.
+      </p>
+      <p className="mb-6 mt-2 max-w-sm font-mono text-[11px] text-ink-60" style={{ letterSpacing: 0.3 }}>
+        One-off games that aren&apos;t part of a tournament or league live here.
+      </p>
+      <Link href="/director/game/create" className="bg-ink px-6 py-3.5 text-paper hover:opacity-80">
+        <span className="font-mono-bold text-[11px] uppercase" style={{ letterSpacing: 2 }}>
+          Add a game →
+        </span>
+      </Link>
     </div>
   );
 }

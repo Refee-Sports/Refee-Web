@@ -366,6 +366,108 @@ export async function fetchGameApplicants(
   return { applicants, error: null };
 }
 
+export type PendingApproval = {
+  assignmentId: string;
+  refId: string;
+  appliedAt: string;
+  profile: ApplicantRow["profile"];
+  job: {
+    id: string;
+    title: string;
+    startsAt: string;
+    venueCity: string;
+    venueState: string;
+    payPerGame: number;
+    crewSize: number;
+    tournamentName: string | null;
+    acceptedCount: number;
+  };
+};
+
+/**
+ * Every referee waiting on this director, across all of their games — single
+ * games and tournament games alike — so approvals can be worked from one list
+ * instead of opening each game in turn.
+ *
+ * Leaves out applications the director can't act on anyway, which the
+ * director_respond_to_application RPC would reject: games that have started or
+ * closed, and tournament games staffed by an accepted assignor.
+ */
+export async function fetchPendingApprovals(
+  userId: string
+): Promise<{ approvals: PendingApproval[]; error: Error | null }> {
+  const hirerId = await fetchMyHirerId(userId);
+  if (!hirerId) return { approvals: [], error: null };
+
+  const { data, error } = await supabase
+    .from("job_assignments")
+    .select(
+      "id, ref_id, applied_at, public_profiles(first_name, last_initial, display_name, avatar_url, rating, city, state), jobs!inner(id, title, starts_at, venue_city, venue_state, pay_per_game, crew_size, status, hirer_id, tournaments(name, assignor_id, assignor_status))"
+    )
+    .eq("status", "pending")
+    .eq("jobs.hirer_id", hirerId)
+    .order("applied_at", { ascending: true });
+
+  if (error) return { approvals: [], error: new Error(error.message) };
+
+  const now = Date.now();
+  const one = <T,>(v: T | T[] | null | undefined): T | null =>
+    Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
+
+  const actionable = (data ?? []).filter((row: any) => {
+    const job = one<any>(row.jobs);
+    if (!job) return false;
+    if (job.status === "completed" || job.status === "cancelled") return false;
+    if (new Date(job.starts_at).getTime() <= now) return false;
+    const t = one<any>(job.tournaments);
+    return !(t?.assignor_id && t?.assignor_status === "accepted");
+  });
+
+  // How full each crew already is, so the list can say "2 / 3 confirmed".
+  const jobIds = [...new Set(actionable.map((row: any) => one<any>(row.jobs).id as string))];
+  const acceptedByJob = new Map<string, number>();
+  if (jobIds.length > 0) {
+    const { data: accepted } = await supabase
+      .from("job_assignments")
+      .select("job_id")
+      .in("job_id", jobIds)
+      .in("status", ["accepted", "needs_reconfirm"]);
+    for (const a of accepted ?? []) {
+      acceptedByJob.set(a.job_id, (acceptedByJob.get(a.job_id) ?? 0) + 1);
+    }
+  }
+
+  const approvals: PendingApproval[] = actionable
+    .map((row: any) => {
+      const job = one<any>(row.jobs);
+      return {
+        assignmentId: row.id,
+        refId: row.ref_id,
+        appliedAt: row.applied_at,
+        profile: one<any>(row.public_profiles),
+        job: {
+          id: job.id,
+          title: job.title,
+          startsAt: job.starts_at,
+          venueCity: job.venue_city,
+          venueState: job.venue_state,
+          payPerGame: job.pay_per_game,
+          crewSize: job.crew_size ?? 1,
+          tournamentName: one<any>(job.tournaments)?.name ?? null,
+          acceptedCount: acceptedByJob.get(job.id) ?? 0,
+        },
+      };
+    })
+    // Soonest game first; within a game, first come first served.
+    .sort(
+      (a, b) =>
+        new Date(a.job.startsAt).getTime() - new Date(b.job.startsAt).getTime() ||
+        new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime()
+    );
+
+  return { approvals, error: null };
+}
+
 /**
  * Recomputes a game's status: 'staffed' once every crew slot is filled by an
  * accepted ref, otherwise 'open'. No-op for completed/cancelled games.
