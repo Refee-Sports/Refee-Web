@@ -11,6 +11,7 @@ import { fetchMyProfile, type ProfileRow } from "@/lib/profile/queries";
 import {
   fetchEarningsSummary,
   fetchMyAssignments,
+  fetchPendingApplications,
   type AssignmentRow,
   type EarningsSummary,
 } from "@/lib/home/queries";
@@ -47,6 +48,7 @@ export default function RefereeHomePage() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [todayGames, setTodayGames] = useState<AssignmentRow[]>([]);
   const [upcomingGames, setUpcomingGames] = useState<AssignmentRow[]>([]);
+  const [pendingApps, setPendingApps] = useState<AssignmentRow[]>([]);
   const [earnings, setEarnings] = useState<EarningsSummary>({
     paidThisMonth: 0,
     pendingTotal: 0,
@@ -68,16 +70,18 @@ export default function RefereeHomePage() {
         // Fallback for pg_cron: auto-completes games 24h past their end.
         void supabase.rpc("sweep_game_lifecycle");
 
-        const [profileRes, assignRes, earningsRes] = await Promise.all([
+        const [profileRes, assignRes, earningsRes, pendingRes] = await Promise.all([
           fetchMyProfile(uid),
           fetchMyAssignments(uid),
           fetchEarningsSummary(uid),
+          fetchPendingApplications(uid),
         ]);
 
         if (cancelled) return;
         setProfile(profileRes.data as ProfileRow | null);
         setTodayGames(assignRes.today);
         setUpcomingGames(assignRes.upcoming);
+        setPendingApps(pendingRes.pending);
         setEarnings(earningsRes.summary);
         setLoading(false);
       })();
@@ -160,6 +164,18 @@ export default function RefereeHomePage() {
               </div>
             </>
           )}
+
+          {/* Applications the organizer hasn't answered yet */}
+          {pendingApps.length > 0 && (
+            <>
+              <SectionHeader>{`Awaiting approval · ${pendingApps.length}`}</SectionHeader>
+              <div className="mx-5 flex flex-col gap-3 sm:mx-0">
+                {pendingApps.map((r) => (
+                  <AssignmentCard key={r.id} row={r} pending />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="min-w-0">
@@ -192,15 +208,27 @@ export default function RefereeHomePage() {
   );
 }
 
-function AssignmentCard({ row }: { row: AssignmentRow }) {
+function AssignmentCard({ row, pending }: { row: AssignmentRow; pending?: boolean }) {
   const org = row.job.hirers?.org_name.toUpperCase() ?? "ORGANIZER";
   const pay = row.job.pay_per_game * row.job.num_games;
 
   return (
     <Link
       href={`/app/job/${row.job.id}`}
-      className="block border border-ink-20 bg-chalk hover:opacity-80"
+      className={`block border bg-chalk hover:opacity-80 ${
+        pending ? "border-dashed border-whistle" : "border-ink-20"
+      }`}
     >
+      {pending ? (
+        <div className="border-b border-whistle/40 bg-whistle/10 px-4 py-1.5">
+          <span
+            className="font-mono-bold text-[9px] uppercase text-ink-80"
+            style={{ letterSpacing: 1.5 }}
+          >
+            Applied · waiting on the organizer
+          </span>
+        </div>
+      ) : null}
       <div className="px-4 pb-1 pt-3.5">
         <span
           className="block font-display text-ink"

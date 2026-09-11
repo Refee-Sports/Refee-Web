@@ -144,6 +144,54 @@ export function JobDetailActionBar({
     );
   }
 
+  if (assignmentStatus === "pending") {
+    return (
+      <div className={shell} style={shellStyle}>
+        <div className="-mt-[1.5px]">
+          <ZebraRule variant="signal" thin noMargin />
+        </div>
+        {error ? (
+          <p
+            className="mt-3 border border-foul bg-foul/10 px-3 py-2 font-mono text-[10px] uppercase text-foul"
+            style={{ letterSpacing: 1 }}
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-3 flex flex-col items-center justify-center border border-whistle bg-whistle/10 px-4 py-3.5">
+          <span
+            className="font-mono-bold text-xs uppercase text-ink"
+            style={{ letterSpacing: 2 }}
+          >
+            Applied · awaiting approval
+          </span>
+          <span
+            className="mt-1 text-center font-mono text-[9px] uppercase text-ink-60"
+            style={{ letterSpacing: 1 }}
+          >
+            The organizer confirms the crew — you'll see it on your home screen
+          </span>
+        </div>
+        {/* Retracting a pending application goes through respond_to_job, not
+            withdraw_from_job — that one only handles confirmed spots. */}
+        <button
+          type="button"
+          onClick={onDecline}
+          disabled={actionLoading || !canMutate}
+          className="mt-2 w-full py-2 text-center hover:opacity-70 disabled:opacity-40"
+        >
+          <span
+            className="font-mono-bold text-[9px] uppercase text-ink-40 underline"
+            style={{ letterSpacing: 1.5 }}
+          >
+            Withdraw this application
+          </span>
+        </button>
+      </div>
+    );
+  }
+
   if (assignmentStatus === "declined") {
     return (
       <div className={shell} style={shellStyle}>
