@@ -395,11 +395,15 @@ export async function approveApplicant(
   jobId: string,
   refId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
-    .from("job_assignments")
-    .update({ status: "accepted", responded_at: new Date().toISOString() })
-    .eq("job_id", jobId)
-    .eq("ref_id", refId);
+  // job_assignments has no UPDATE policy — a direct write here matches zero
+  // rows and reports no error, so the button looked like it worked and never
+  // did. The security-definer RPC is the sanctioned path, and it also checks
+  // crew size and schedule conflicts.
+  const { error } = await supabase.rpc("director_respond_to_application", {
+    p_job_id: jobId,
+    p_ref_id: refId,
+    p_accept: true,
+  });
   if (error) return { error: new Error(error.message) };
 
   // Flip the game to 'staffed' if this filled the crew
@@ -438,11 +442,12 @@ export async function declineApplicantForGame(
   jobId: string,
   refId: string
 ): Promise<{ error: Error | null }> {
-  const { error } = await supabase
-    .from("job_assignments")
-    .update({ status: "declined", responded_at: new Date().toISOString() })
-    .eq("job_id", jobId)
-    .eq("ref_id", refId);
+  // Same reason as approveApplicant: direct updates are blocked by RLS.
+  const { error } = await supabase.rpc("director_respond_to_application", {
+    p_job_id: jobId,
+    p_ref_id: refId,
+    p_accept: false,
+  });
   return { error: error ? new Error(error.message) : null };
 }
 
@@ -604,13 +609,15 @@ export async function updateGame(
 
   if (!materialChange) return { error: null, refsNeedReconfirm: false };
 
-  // Accepted refs must re-confirm
+  // The trg_jobs_reconfirm_assignments trigger flips accepted refs to
+  // needs_reconfirm when a job changes materially — this client-side update
+  // was a broken duplicate of it (no UPDATE policy, so it matched nothing).
+  // We only need to know who to notify, so read them back after the change.
   const { data: flipped } = await supabase
     .from("job_assignments")
-    .update({ status: "needs_reconfirm" })
+    .select("ref_id")
     .eq("job_id", gameId)
-    .eq("status", "accepted")
-    .select("ref_id");
+    .eq("status", "needs_reconfirm");
 
   const hadAccepted = (flipped ?? []).length > 0;
 
@@ -722,19 +729,13 @@ export async function completeGame(
     return { error: new Error("Game is already closed.") };
   }
 
-  const { error: updErr } = await supabase
-    .from("jobs")
-    .update({ status: "completed", completed_at: new Date().toISOString() })
-    .eq("id", gameId);
+  // complete_game closes the job AND settles its assignments (amount_due,
+  // status) in one transaction. Doing it as two client updates left the
+  // assignment half silently unwritten — job_assignments has no UPDATE policy.
+  const { error: updErr } = await supabase.rpc("complete_game", { p_job_id: gameId });
   if (updErr) return { error: new Error(updErr.message) };
 
   const fullPay = job.pay_per_game * (job.num_games ?? 1);
-  const { error: aErr } = await supabase
-    .from("job_assignments")
-    .update({ status: "completed", amount_due: fullPay })
-    .eq("job_id", gameId)
-    .in("status", ["accepted", "needs_reconfirm"]);
-  if (aErr) return { error: new Error(aErr.message) };
 
   await postCrewNote(
     gameId,
@@ -764,32 +765,16 @@ export async function cancelGame(
     return { error: new Error("Game is already closed."), feePaid: false, feeAmount: 0 };
   }
 
-  const msToStart = new Date(job.starts_at).getTime() - Date.now();
-  const lateCancel = msToStart < CANCEL_FEE_WINDOW_HOURS * 3_600_000;
-  const feeAmount = lateCancel
-    ? Math.round(job.pay_per_game * (job.num_games ?? 1) * 0.5)
-    : 0;
-
-  const { error: updErr } = await supabase
-    .from("jobs")
-    .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-    .eq("id", gameId);
+  // cancel_game cancels the job and settles every assignment (bust fee for
+  // confirmed refs, nothing for pending ones) in one transaction. It owns the
+  // fee maths too, so we report what it actually applied rather than guessing.
+  const { data: result, error: updErr } = await supabase.rpc("cancel_game", {
+    p_job_id: gameId,
+  });
   if (updErr) return { error: new Error(updErr.message), feePaid: false, feeAmount: 0 };
 
-  // Confirmed refs → cancelled with (possible) bust fee
-  const { error: aErr } = await supabase
-    .from("job_assignments")
-    .update({ status: "cancelled", amount_due: feeAmount })
-    .eq("job_id", gameId)
-    .in("status", ["accepted", "needs_reconfirm"]);
-  if (aErr) return { error: new Error(aErr.message), feePaid: false, feeAmount: 0 };
-
-  // Pending applicants → cancelled, no fee
-  await supabase
-    .from("job_assignments")
-    .update({ status: "cancelled", amount_due: 0 })
-    .eq("job_id", gameId)
-    .eq("status", "pending");
+  const lateCancel = Boolean(result?.fee_paid);
+  const feeAmount = Number(result?.fee_amount ?? 0);
 
   await postCrewNote(
     gameId,
