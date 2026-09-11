@@ -29,6 +29,34 @@ export async function fetchMyJobAssignment(
 
 const DEFAULT_GAME_MINUTES = 120;
 
+/** All seven bits set — "available any day", same as expressing no preference. */
+const ALL_DAYS_MASK = 0b1111111;
+
+/**
+ * Day-of-week bit for a job, in the timezone the app displays games in, so the
+ * bit matches the weekday the ref actually sees on the card. Bit 0 is Sunday,
+ * matching Date.getDay() and the profile screen's day grid.
+ */
+function jobDayBit(startsAt: string): number {
+  const weekday = new Date(startsAt).toLocaleDateString("en-US", {
+    weekday: "short",
+    timeZone: "America/Chicago",
+  });
+  const index = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
+  return index < 0 ? -1 : 1 << index;
+}
+
+/**
+ * Whether a ref who is available on `mask` days would work a game starting at
+ * `startsAt`. A mask of 0 means the ref has never set their days, so treat it
+ * as no preference rather than hiding every game from them.
+ */
+export function matchesAvailableDays(mask: number, startsAt: string): boolean {
+  if (!mask || mask === ALL_DAYS_MASK) return true;
+  const bit = jobDayBit(startsAt);
+  return bit < 0 ? true : (mask & bit) !== 0;
+}
+
 function jobWindow(startsAt: string, durationMinutes: number | null): [number, number] {
   const start = new Date(startsAt).getTime();
   return [start, start + (durationMinutes ?? DEFAULT_GAME_MINUTES) * 60_000];
@@ -242,7 +270,7 @@ export async function fetchOpenJobs(
         .maybeSingle(),
       supabase
         .from("availability_prefs")
-        .select("min_pay_per_game, travel_radius_miles")
+        .select("min_pay_per_game, travel_radius_miles, available_days")
         .eq("ref_id", userId)
         .maybeSingle(),
     ]);
@@ -277,6 +305,10 @@ export async function fetchOpenJobs(
     if (minPay > 0) {
       rows = rows.filter((r) => ((r as any).pay_per_game ?? 0) >= minPay);
     }
+
+    // Availability: don't offer a ref games on days they don't work.
+    const availableDays = prefs?.available_days ?? 0;
+    rows = rows.filter((r) => matchesAvailableDays(availableDays, (r as any).starts_at));
   }
 
   return {
