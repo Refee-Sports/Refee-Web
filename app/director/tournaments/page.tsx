@@ -22,9 +22,11 @@ import {
   type TournamentRow,
 } from "@/lib/director/queries";
 import { runAutoPay } from "@/lib/payments/queries";
+import { gameStatusDisplay, isClosedGame, payoutDisplay, type PayoutTone } from "@/lib/director/game-status";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "#1F4FCC",
+  partially_filled: "#F5B90B",
   staffed: "#00A85C",
   completed: "rgba(8,17,28,0.40)",
   cancelled: "#E53E3E",
@@ -200,9 +202,15 @@ function DirectorHome() {
     setActioning(null);
   };
 
+  // Finished games move to the archive so the list is what still needs work.
+  const activeGames = singleGames.filter((g) => !isClosedGame(g.status));
+  const archivedGames = singleGames
+    .filter((g) => isClosedGame(g.status))
+    .sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime());
+
   const counts: Record<Tab, number> = {
     tournaments: tournaments.length,
-    games: singleGames.length,
+    games: activeGames.length,
     approvals: approvals.length,
   };
 
@@ -225,8 +233,8 @@ function DirectorHome() {
         <span className="font-mono text-[9px] uppercase text-ink-60" style={{ letterSpacing: 2 }}>
           <span className="font-mono-bold text-ink">DIRECTOR</span>
           {` · ${tournaments.length} TOURNAMENT${tournaments.length !== 1 ? "S" : ""} · ${
-            singleGames.length
-          } SINGLE GAME${singleGames.length !== 1 ? "S" : ""}`}
+            activeGames.length
+          } UPCOMING GAME${activeGames.length !== 1 ? "S" : ""} · ${archivedGames.length} ARCHIVED`}
           {approvals.length > 0 ? (
             <span className="font-mono-bold text-ink">{` · ${approvals.length} AWAITING APPROVAL`}</span>
           ) : null}
@@ -320,7 +328,7 @@ function DirectorHome() {
                 </span>
                 <span
                   className={`min-w-[20px] px-1.5 py-0.5 text-center font-mono-bold text-[10px] ${
-                    urgent ? "bg-whistle text-ink" : active ? "text-hi-vis" : "text-ink"
+                    urgent ? "badge-flash bg-whistle text-ink" : active ? "text-hi-vis" : "text-ink"
                   }`}
                 >
                   {count}
@@ -380,11 +388,23 @@ function DirectorHome() {
           {singleGames.length === 0 ? (
             <SingleGamesEmpty />
           ) : (
-            <div className="card-grid">
-              {singleGames.map((g) => (
-                <SingleGameCard key={g.id} game={g} />
-              ))}
-            </div>
+            <>
+              {activeGames.length === 0 ? (
+                <p
+                  className="border border-dashed border-ink-20 px-4 py-6 text-center font-mono text-[11px] uppercase text-ink-60"
+                  style={{ letterSpacing: 1 }}
+                >
+                  No upcoming single games — finished ones are in the archive below.
+                </p>
+              ) : (
+                <div className="card-grid">
+                  {activeGames.map((g) => (
+                    <SingleGameCard key={g.id} game={g} />
+                  ))}
+                </div>
+              )}
+              {archivedGames.length > 0 ? <GameArchive games={archivedGames} /> : null}
+            </>
           )}
         </div>
       ) : (
@@ -734,36 +754,119 @@ function TournamentCard({ tournament }: { tournament: TournamentRow }) {
   );
 }
 
-function SingleGameCard({ game }: { game: DirectorGameRow }) {
-  const statusColor = STATUS_COLORS[game.status] ?? "rgba(8,17,28,0.40)";
+const PAYOUT_TONE: Record<PayoutTone, string> = {
+  paid: "border-ink-20 text-court",
+  held: "border-ink-20 bg-whistle/10 text-ink-80",
+  due: "border-ink-20 text-ink-60",
+  overdue: "border-foul/40 bg-foul/10 text-foul",
+  none: "border-ink-20 text-ink-40",
+};
+
+function SingleGameCard({ game, archived }: { game: DirectorGameRow; archived?: boolean }) {
+  const display = gameStatusDisplay(game);
+  const payout = archived ? payoutDisplay(game) : null;
   const title =
     game.home_team && game.away_team ? `${game.home_team} vs ${game.away_team}` : game.title;
   return (
-    <Link href={`/director/game/${game.id}`} className="block border border-ink bg-chalk hover:opacity-75">
-      <div className="h-1" style={{ backgroundColor: statusColor }} />
+    <Link
+      href={`/director/game/${game.id}`}
+      className={`block border bg-chalk hover:opacity-75 ${archived ? "border-ink-20" : "border-ink"}`}
+    >
+      <div className="h-1" style={{ backgroundColor: display.accent }} />
       <div className="px-4 pb-3 pt-3">
-        <div className="mb-1 flex items-start justify-between">
+        <div className="mb-1 flex items-start justify-between gap-2">
           <span
-            className="min-w-0 flex-1 truncate pr-2 font-mono-bold text-[12px] uppercase text-ink"
+            className={`min-w-0 flex-1 truncate font-mono-bold text-[12px] uppercase ${
+              archived ? "text-ink-60" : "text-ink"
+            }`}
             style={{ letterSpacing: 0.5 }}
           >
             {title.toUpperCase()}
           </span>
           <span
-            className="shrink-0 font-mono-bold text-[8px] uppercase"
-            style={{ letterSpacing: 1.5, color: statusColor }}
+            className={`shrink-0 font-mono-bold text-[8px] uppercase ${display.chip}`}
+            style={{ letterSpacing: 1.5 }}
           >
-            {game.status}
+            {display.label}
           </span>
         </div>
         <span
           className="block font-mono text-[10px] uppercase text-ink-60"
           style={{ letterSpacing: 1 }}
         >
+          {archived ? `${formatDate(game.starts_at)} · ` : ""}
           {game.venue_city.toUpperCase()}, {game.venue_state} · ${game.pay_per_game}/REF
         </span>
       </div>
+      {payout ? (
+        <div className={`border-t px-4 py-2 ${PAYOUT_TONE[payout.tone]}`}>
+          <span className="font-mono-bold text-[9px] uppercase" style={{ letterSpacing: 1.3 }}>
+            {payout.label}
+          </span>
+        </div>
+      ) : null}
     </Link>
+  );
+}
+
+/** Completed and cancelled games, out of the way but one tap from view. */
+function GameArchive({ games }: { games: DirectorGameRow[] }) {
+  const [open, setOpen] = useState(false);
+  const owed = games.filter((g) => {
+    const tone = payoutDisplay(g).tone;
+    return tone === "due" || tone === "overdue";
+  }).length;
+  const overdue = games.filter((g) => payoutDisplay(g).tone === "overdue").length;
+
+  return (
+    <section className="mt-8">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 border-y border-ink py-3 text-left hover:opacity-80"
+      >
+        <span
+          className="font-mono-bold text-[10px] uppercase text-ink"
+          style={{ letterSpacing: 2.5 }}
+        >
+          ── Archive · {games.length}
+        </span>
+        <span className="flex items-center gap-3">
+          {overdue > 0 ? (
+            <span
+              className="bg-foul px-1.5 py-0.5 font-mono-bold text-[9px] uppercase text-paper"
+              style={{ letterSpacing: 1.2 }}
+            >
+              {overdue} payout{overdue !== 1 ? "s" : ""} overdue
+            </span>
+          ) : owed > 0 ? (
+            <span
+              className="bg-whistle px-1.5 py-0.5 font-mono-bold text-[9px] uppercase text-ink"
+              style={{ letterSpacing: 1.2 }}
+            >
+              {owed} payout{owed !== 1 ? "s" : ""} pending
+            </span>
+          ) : null}
+          <span
+            className="font-mono-bold text-[10px] uppercase text-ink-60"
+            style={{ letterSpacing: 1.5 }}
+          >
+            {open ? "Hide" : "Show"}
+          </span>
+          <span className={`text-ink-60 transition-transform ${open ? "rotate-180" : ""}`}>
+            <Icon name="chevron-down" size={14} />
+          </span>
+        </span>
+      </button>
+      {open ? (
+        <div className="card-grid mt-4">
+          {games.map((g) => (
+            <SingleGameCard key={g.id} game={g} archived />
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

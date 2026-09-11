@@ -20,6 +20,7 @@ import {
   fetchGameById,
   fetchGameRatedRefIds,
   fetchMyHirerId,
+  setGameAutoAccept,
   submitRefereeRating,
   type ApplicantRow,
   type CategoryRatings,
@@ -80,6 +81,7 @@ export default function DirectorGameDetailPage({
   const [noteText, setNoteText] = useState("");
   const [postingNote, setPostingNote] = useState(false);
   const [crewThread, setCrewThread] = useState<CrewThread | null>(null);
+  const [savingAccept, setSavingAccept] = useState(false);
 
   const reload = useCallback(async () => {
     const [{ game: g, error: gErr }, { applicants: apps, error: aErr }] = await Promise.all([
@@ -285,6 +287,18 @@ export default function DirectorGameDetailPage({
       );
     }
     setActioning(null);
+  };
+
+  const handleAutoAccept = async (next: boolean) => {
+    if (!game || next === !!game.auto_accept) return;
+    setSavingAccept(true);
+    const { error: err } = await setGameAutoAccept(id, next);
+    setSavingAccept(false);
+    if (err) {
+      setNotice(err.message);
+      return;
+    }
+    setGame({ ...game, auto_accept: next });
   };
 
   const handleDecline = async (refId: string) => {
@@ -631,27 +645,79 @@ export default function DirectorGameDetailPage({
         </div>
       )}
 
+      {/* Acceptance — switchable here, without the full edit form */}
+      {!isClosed && (
+        <div className="mx-5 mb-4 border border-ink bg-chalk">
+          <div className="border-b border-ink-20 px-4 py-2.5">
+            <span
+              className="font-mono-bold text-[9px] uppercase text-ink-60"
+              style={{ letterSpacing: 2 }}
+            >
+              Referee acceptance
+            </span>
+          </div>
+          <div className="flex" role="radiogroup" aria-label="Referee acceptance">
+            {(
+              [
+                [true, "Auto-accept", "Refs are confirmed the moment they apply"],
+                [false, "Manual approval", "You approve each ref in Approvals"],
+              ] as const
+            ).map(([value, label, hint], idx) => {
+              const selected = !!game.auto_accept === value;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={savingAccept}
+                  onClick={() => void handleAutoAccept(value)}
+                  className={`flex-1 px-4 py-3 text-left disabled:opacity-60 ${
+                    idx === 0 ? "border-r border-ink-20" : ""
+                  } ${selected ? "bg-ink text-paper" : "text-ink hover:bg-paper"}`}
+                >
+                  <span
+                    className="block font-mono-bold text-[11px] uppercase"
+                    style={{ letterSpacing: 1.5 }}
+                  >
+                    {selected ? "● " : "○ "}
+                    {label}
+                  </span>
+                  <span
+                    className={`mt-0.5 block font-mono text-[9px] ${
+                      selected ? "text-paper/70" : "text-ink-60"
+                    }`}
+                    style={{ letterSpacing: 0.5 }}
+                  >
+                    {hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {game.auto_accept && pending.length > 0 ? (
+            <p
+              className="border-t border-ink-20 px-4 py-2 font-mono text-[9px] uppercase text-ink-60"
+              style={{ letterSpacing: 1 }}
+            >
+              Applies to new applications — the {pending.length} already waiting still need an
+              answer below.
+            </p>
+          ) : null}
+        </div>
+      )}
+
       {/* Details */}
-      {(game.uniform_requirements || game.hirer_note || game.auto_accept) && (
+      {(game.uniform_requirements || game.hirer_note) && (
         <div className="mx-5 mb-4 border border-ink-20 bg-chalk">
           {game.uniform_requirements && (
             <>
               <DetailRow icon="user" label="Uniform" value={game.uniform_requirements} />
-              <span className="block h-px bg-ink-20" />
+              {game.hirer_note && <span className="block h-px bg-ink-20" />}
             </>
           )}
           {game.hirer_note && (
-            <>
-              <DetailRow icon="file-text" label="Notes" value={game.hirer_note} />
-              {game.auto_accept && <span className="block h-px bg-ink-20" />}
-            </>
-          )}
-          {game.auto_accept && (
-            <DetailRow
-              icon="zap"
-              label="Auto-accept"
-              value="ON — Referees are instantly accepted"
-            />
+            <DetailRow icon="file-text" label="Notes" value={game.hirer_note} />
           )}
         </div>
       )}

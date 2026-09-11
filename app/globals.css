@@ -210,8 +210,32 @@
   }
 }
 
+/* Pulls the eye to a count that is waiting on the user (Approvals). Well
+   under three flashes a second, so it stays clear of photosensitivity limits. */
+@keyframes refee-flash {
+  0%,
+  100% {
+    background-color: var(--whistle);
+    box-shadow: 0 0 0 0 rgba(245, 185, 11, 0);
+    transform: scale(1);
+  }
+  50% {
+    background-color: var(--hi-vis);
+    box-shadow: 0 0 0 4px rgba(245, 185, 11, 0.35);
+    transform: scale(1.15);
+  }
+}
+
+.badge-flash {
+  animation: refee-flash 1.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dot-pulse {
+    animation: none;
+  }
+  /* Keep the colour, drop the motion. */
+  .badge-flash {
     animation: none;
   }
   .btn {

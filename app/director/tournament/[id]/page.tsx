@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { gameStatusDisplay } from "@/lib/director/game-status";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useState } from "react";
 import { ZebraRule } from "@/components/ui/ZebraRule";
@@ -184,6 +185,7 @@ export default function TournamentDetailPage({
         <div>
           {games.map((item) => (
             <div key={item.id} className="mx-5 sm:mx-0 mb-2 border border-ink bg-chalk">
+              <div className="h-1" style={{ backgroundColor: gameStatusDisplay(item).accent }} />
               <Link href={`/director/game/${item.id}`} className="block hover:opacity-75">
                 <div className="px-4 pb-3 pt-3.5">
                   <div className="mb-1 flex items-start justify-between">
@@ -193,7 +195,7 @@ export default function TournamentDetailPage({
                     >
                       {item.title}
                     </span>
-                    <GameStatusBadge status={item.status} />
+                    <GameStatusBadge game={item} />
                   </div>
                   <span
                     className="block font-mono text-[10px] uppercase text-ink-60"
@@ -249,19 +251,15 @@ function StatCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function GameStatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    open: "#1F4FCC",
-    staffed: "#00A85C",
-    completed: "#00A85C",
-    cancelled: "#E53E3E",
-  };
+/** Derived from confirmed refs vs crew size, so a 1-of-3 game reads as partially filled. */
+function GameStatusBadge({ game }: { game: DirectorGameRow }) {
+  const display = gameStatusDisplay(game);
   return (
     <span
-      className="shrink-0 font-mono-bold text-[8px] uppercase"
-      style={{ letterSpacing: 1.5, color: colors[status] ?? "rgba(8,17,28,0.40)" }}
+      className={`shrink-0 font-mono-bold text-[8px] uppercase ${display.chip}`}
+      style={{ letterSpacing: 1.5 }}
     >
-      {status}
+      {display.label}
     </span>
   );
 }

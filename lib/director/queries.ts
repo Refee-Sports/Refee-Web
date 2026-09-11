@@ -62,6 +62,12 @@ export type DirectorGameRow = {
   uniform_requirements: string | null;
   hirer_note: string | null;
   payment_status?: string | null;
+  completed_at?: string | null;
+  payout_window_hours?: number | null;
+  /** Refs confirmed on the crew (accepted, needs_reconfirm or completed). */
+  confirmedCount?: number;
+  /** payout_status of each ref who worked the game (completed assignments). */
+  refPayouts?: string[];
 };
 
 export type ApplicantRow = {
@@ -241,17 +247,37 @@ export async function updateTournamentStatus(
 
 // ── Games ────────────────────────────────────────────────────────────────────
 
+const CONFIRMED_STATUSES = new Set(["accepted", "needs_reconfirm", "completed"]);
+
+/**
+ * Folds each game's embedded job_assignments into the two numbers the list
+ * screens need — how full the crew is, and whether the refs who worked it were
+ * paid — and drops the raw embed.
+ */
+function withStaffing(rows: unknown[]): DirectorGameRow[] {
+  return (rows as Array<Record<string, unknown>>).map(({ job_assignments, ...job }) => {
+    const list = (job_assignments ?? []) as Array<{ status: string; payout_status: string | null }>;
+    return {
+      ...(job as unknown as DirectorGameRow),
+      confirmedCount: list.filter((a) => CONFIRMED_STATUSES.has(a.status)).length,
+      refPayouts: list
+        .filter((a) => a.status === "completed")
+        .map((a) => a.payout_status ?? "pending"),
+    };
+  });
+}
+
 export async function fetchTournamentGames(
   tournamentId: string
 ): Promise<{ games: DirectorGameRow[]; error: Error | null }> {
   const { data, error } = await supabase
     .from("jobs")
-    .select("*")
+    .select("*, job_assignments(status, payout_status)")
     .eq("tournament_id", tournamentId)
     .order("starts_at", { ascending: true });
 
   if (error) return { games: [], error: new Error(error.message) };
-  return { games: (data ?? []) as DirectorGameRow[], error: null };
+  return { games: withStaffing(data ?? []), error: null };
 }
 
 export type CreateGameArgs = {
@@ -335,6 +361,29 @@ export async function fetchGameById(
 
   if (error) return { game: null, error: new Error(error.message) };
   return { game: data as DirectorGameRow | null, error: null };
+}
+
+/**
+ * Switches a game between auto-accepting referees and manual approval.
+ * Only affects applications that arrive after the change — respond_to_job
+ * reads auto_accept when a ref applies.
+ */
+export async function setGameAutoAccept(
+  gameId: string,
+  autoAccept: boolean
+): Promise<{ error: Error | null }> {
+  const { data, error } = await supabase
+    .from("jobs")
+    .update({ auto_accept: autoAccept })
+    .eq("id", gameId)
+    .select("id");
+  if (error) return { error: new Error(error.message) };
+  // An update that matches no row is not an error in Postgres, so check the
+  // row came back rather than reporting a save that never happened.
+  if (!data || data.length === 0) {
+    return { error: new Error("Couldn't update this game's acceptance setting.") };
+  }
+  return { error: null };
 }
 
 // ── Applicant management ─────────────────────────────────────────────────────
@@ -531,13 +580,13 @@ export async function fetchStandaloneGames(
 
   const { data, error } = await supabase
     .from("jobs")
-    .select("*")
+    .select("*, job_assignments(status, payout_status)")
     .eq("hirer_id", hirerId)
     .is("tournament_id", null)
     .order("starts_at", { ascending: true });
 
   if (error) return { games: [], error: new Error(error.message) };
-  return { games: (data ?? []) as DirectorGameRow[], error: null };
+  return { games: withStaffing(data ?? []), error: null };
 }
 
 export async function declineApplicantForGame(

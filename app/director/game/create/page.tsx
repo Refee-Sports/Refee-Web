@@ -13,7 +13,6 @@ import {
   SelectField,
   TextArea,
   TextField,
-  Toggle,
 } from "@/components/ui/Field";
 import { Spinner } from "@/components/ui/AppButton";
 import { Icon } from "@/components/ui/Icon";
@@ -358,6 +357,46 @@ function CreateGameInner() {
           inputMode="numeric"
         />
 
+        <SectionLabel className="mt-7">Referee acceptance</SectionLabel>
+        <div className="flex border border-ink" role="radiogroup" aria-label="Referee acceptance">
+          {(
+            [
+              [true, "Auto-accept", "Refs are confirmed the moment they apply."],
+              [false, "Manual approval", "Each application waits in Approvals for your yes or no."],
+            ] as const
+          ).map(([value, label, hint], idx) => {
+            const selected = form.autoAccept === value;
+            return (
+              <button
+                key={label}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setForm((f) => ({ ...f, autoAccept: value }))}
+                className={`flex-1 px-4 py-3.5 text-left ${idx === 0 ? "border-r border-ink" : ""} ${
+                  selected ? "bg-ink text-paper" : "bg-chalk text-ink hover:bg-paper"
+                }`}
+              >
+                <span
+                  className="block font-mono-bold text-[11px] uppercase"
+                  style={{ letterSpacing: 1.5 }}
+                >
+                  {selected ? "● " : "○ "}
+                  {label}
+                </span>
+                <span
+                  className={`mt-1 block font-mono text-[9px] leading-4 ${
+                    selected ? "text-paper/70" : "text-ink-60"
+                  }`}
+                  style={{ letterSpacing: 0.3 }}
+                >
+                  {hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <SectionLabel className="mt-7">Date &amp; time</SectionLabel>
         <Label>Game date *</Label>
         {tournament && (
@@ -477,34 +516,6 @@ function CreateGameInner() {
           rows={3}
         />
 
-        <SectionLabel className="mt-7">Acceptance settings</SectionLabel>
-        <div
-          className={`flex items-center justify-between border border-ink px-4 py-4 ${
-            form.autoAccept ? "bg-hi-vis" : "bg-chalk"
-          }`}
-        >
-          <div className="flex-1 pr-4">
-            <span
-              className="block font-mono-bold text-[11px] uppercase text-ink"
-              style={{ letterSpacing: 1.5 }}
-            >
-              {form.autoAccept ? "● Auto-accept on" : "○ Manual approval"}
-            </span>
-            <span
-              className="mt-0.5 block font-mono text-[9px] text-ink-60"
-              style={{ letterSpacing: 1 }}
-            >
-              {form.autoAccept
-                ? "Referees are instantly accepted when they apply."
-                : "You review and approve each referee application."}
-            </span>
-          </div>
-          <Toggle
-            checked={form.autoAccept}
-            onChange={(v) => setForm((f) => ({ ...f, autoAccept: v }))}
-            label="Auto-accept referees"
-          />
-        </div>
       </div>
 
       <div className="action-bar sticky bottom-0">
